@@ -318,7 +318,7 @@ if __name__=="__main__":
     if not os.path.exists(where):
         os.mkdir(where)
     os.chdir(where)
-    where_arg=os.getwd()    
+    where_arg=os.getcwd()    
     ensemble['--data_dir']=[dirs.data_dir]
     ensemble['--output_dir']=[dirs.output_dir]
     expe_list=make_dicts(ensemble)
