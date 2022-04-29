@@ -25,7 +25,7 @@ import subprocess
           '--lrD_sched':['exp'], '--lrG_sched':['exp'], '--lrD_gamma':[0.95,0.9],\
           '--lrG_gamma':[0.95,0.9], '--ortho_init': [True]}"""
 
-ensemble={'--lr_D': [1e-3],'--lr_G' : [1e-3],'--batch_size':[64,64,64,64,64],\
+ensemble={'--lr_D': [1e-3],'--lr_G' : [1e-3],'--batch_size':[64],\
           '--n_dis':[1], '--sn_on_g': [True], '--use_amp':[True],'--warmup':[True],\
           '--lrD_sched':['exp'], '--lrG_sched':['exp'], '--lrD_gamma':[0.9],\
           '--lrG_gamma':[0.9], '--ortho_init': [True],'--test_samples':[1024],
@@ -143,7 +143,7 @@ def get_expe_parameters():
     # Testing and plotting setting
     parser.add_argument('--test_samples',type=int, default=128)
     parser.add_argument('--plot_samples', type=int, default=16)
-    parser.add_argument('--sample_num', type=int, default=8192,\
+    parser.add_argument('--sample_num', type=int, default=1024,\
                         help='Samples to be saved')
     # using pretrained
     parser.add_argument('--pretrained_model', type=int, default=0,\
