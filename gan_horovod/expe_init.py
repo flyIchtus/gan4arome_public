@@ -66,7 +66,7 @@ def get_dirs():
     parser.add_argument('--data_dir', type=str, \
                         default='/scratch/mrmn/brochetc/GAN_2D/Sud_Est_Baselines_IS_1_1.0_0_0_0_0_0_256_done/')
     parser.add_argument('--output_dir', type=str, \
-                        default='/scratch/mrmn/brochetc/GAN_2D/')
+                        default='./')
     
     parser.add_argument('--SET_NUM', type=int, default=0)
     
@@ -162,7 +162,7 @@ def get_expe_parameters():
     parser.add_argument('--data_dir', type=str, \
                         default='/scratch/mrmn/brochetc/GAN_2D/Sud_Est_Baselines_IS_1_1.0_0_0_0_0_0_256_done/')
     parser.add_argument('--output_dir', type=str, \
-                        default='/scratch/mrmn/brochetc/GAN_2D/')
+                        default='./')
 
     # Step size
     parser.add_argument('--log_step', type=int, default=1000) #-> default is at the end of each epoch
