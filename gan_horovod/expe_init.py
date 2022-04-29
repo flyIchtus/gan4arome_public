@@ -318,12 +318,12 @@ if __name__=="__main__":
     if not os.path.exists(where):
         os.mkdir(where)
     os.chdir(where)
-    
+    where_arg=os.getwd()    
     ensemble['--data_dir']=[dirs.data_dir]
     ensemble['--output_dir']=[dirs.output_dir]
     expe_list=make_dicts(ensemble)
     
-    config_list=prepare_expe_set(where,expe_list)
+    config_list=prepare_expe_set(where_arg,expe_list)
     
     for params in expe_list:
         print('--------------------------------------------------------------')
