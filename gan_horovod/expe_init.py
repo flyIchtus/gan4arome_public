@@ -35,7 +35,7 @@ ensemble={'--lr_D': [1e-3],'--lr_G' : [1e-3],'--batch_size':[64],\
 """,\
           '--LA_optimizer':[True],'--LA_k':[1000], '--LA_alpha':[0.3]}"""
 
-script_dir='./'
+script_dir=os.getcwd()
 
 
 
@@ -66,7 +66,7 @@ def get_dirs():
     parser.add_argument('--data_dir', type=str, \
                         default='/scratch/mrmn/brochetc/GAN_2D/Sud_Est_Baselines_IS_1_1.0_0_0_0_0_0_256_done/')
     parser.add_argument('--output_dir', type=str, \
-                        default='./')
+                        default=os.getcwd())
     
     parser.add_argument('--SET_NUM', type=int, default=0)
     
@@ -162,7 +162,7 @@ def get_expe_parameters():
     parser.add_argument('--data_dir', type=str, \
                         default='/scratch/mrmn/brochetc/GAN_2D/Sud_Est_Baselines_IS_1_1.0_0_0_0_0_0_256_done/')
     parser.add_argument('--output_dir', type=str, \
-                        default='./')
+                        default=os.getcwd())
 
     # Step size
     parser.add_argument('--log_step', type=int, default=1000) #-> default is at the end of each epoch
@@ -318,12 +318,12 @@ if __name__=="__main__":
     if not os.path.exists(where):
         os.mkdir(where)
     os.chdir(where)
-    where_arg=os.getcwd()    
+        
     ensemble['--data_dir']=[dirs.data_dir]
     ensemble['--output_dir']=[dirs.output_dir]
     expe_list=make_dicts(ensemble)
     
-    config_list=prepare_expe_set(where_arg,expe_list)
+    config_list=prepare_expe_set(where,expe_list)
     
     for params in expe_list:
         print('--------------------------------------------------------------')
