@@ -35,7 +35,7 @@ ensemble={'--lr_D': [1e-3],'--lr_G' : [1e-3],'--batch_size':[64,64,64,64,64],\
 """,\
           '--LA_optimizer':[True],'--LA_k':[1000], '--LA_alpha':[0.3]}"""
 
-script_dir='/home/mrmn/brochetc/gan4arome_aliasing/gan_horovod/'
+script_dir='./'
 
 
 
