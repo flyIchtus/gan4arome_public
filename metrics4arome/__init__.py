@@ -16,7 +16,7 @@ File include :
 
 import sys
 
-sys.path.append('/home/mrmn/brochetc/gan4arome_aliasing/metrics4arome/')
+sys.path.append('/home/mrmn/brochetc/gan4arome/metrics4arome/')
 
 import metrics4arome.general_metrics as GM
 import metrics4arome.wasserstein_distances as WD
@@ -76,29 +76,34 @@ SWD_metric_torch=metric2D('Sliced Wasserstein Distance  ',\
                     sliced_w1_torch.get_metric_names())
 
 # spectral analysis
-
-spectral=metric2D('Power Spectral Density RMSE  ',\
+print('spectral_dist')
+spectral_dist=metric2D('Power Spectral Density RMSE  ',\
                   Spectral.PSD_compare, ['PSD u', 'PSD v', 'PSD t2m'])
+print('spectral_comp')
+spectral_compute=metric2D('Power Spectral Density  ',\
+                  Spectral.PowerSpectralDensity, ['PSD u', 'PSD v', 'PSD t2m'])
 
 
 # FID score
-
+print('fid')
 fid=metric2D('Fréchet Inception Distance  ',\
              inception.FIDclass(inception.inceptionPath).FID,\
              ['FID'])
 
 # scattering metrics
-
-scat_sparse=scat.scattering_metric(J=6,L=8,shape=(128,128), estimator='s21')
+print('scattering')
+scat_sparse=scat.scattering_metric(J=6,L=8,shape=(128,128), estimator='s21',\
+                                   frontend='torch', backend='torch', cuda=True)
 sparse_metric=metric2D('Sparsity Estimator ', scat_sparse.scattering_distance,\
                        ['s21_u', 's21_v','s21_t2m'])
 
 
-scat_shape=scat.scattering_metric(J=6,L=8,shape=(128,128), estimator='s22')
+scat_shape=scat.scattering_metric(J=6,L=8,shape=(128,128), estimator='s22',\
+                                  frontend='torch', backend='torch', cuda=True)
 shape_metric=metric2D('Sparsity Estimator ', scat_shape.scattering_distance,\
                        ['s22_u', 's22_v','s22_t2m'])
 
-# structure functions distances
+# structure functions 
 
 struct_metric=metric2D('First order structure function', sfunc.increments,\
                        ['Sf_u', 'Sf_v', 'Sf_t2m'])

@@ -239,7 +239,7 @@ def Discrim_Step_Hinge(real, modelD, modelG, optim_D,optim_G,\
     for param in modelG.parameters():
         param.grad=None
     if use_amp:
-        print('forward pass amp')
+
         with torch.cuda.amp.autocast():
             out_real=modelD(real)
             with torch.no_grad():
@@ -251,7 +251,7 @@ def Discrim_Step_Hinge(real, modelD, modelG, optim_D,optim_G,\
         fake=modelG(z)
         out_fake=modelD(fake)
         loss=relu(1.0-out_real).mean()+relu(1.0+out_fake).mean()
-    print('backward pass amp')  
+
     loss.backward()
                 
     return loss

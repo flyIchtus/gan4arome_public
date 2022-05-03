@@ -64,7 +64,7 @@ class scatteringHandler():
     def __init__(self,J,shape,L=8, \
                  max_order=2,pre_pad=False, \
                  frontend='numpy',\
-                 backend='numpy',out_type='array', cuda=False):
+                 backend='numpy',out_type='array', cuda=True):
         
         self.scattering=Scattering2D(J,shape,L,
              max_order=max_order,pre_pad=pre_pad,
@@ -82,6 +82,7 @@ class scatteringHandler():
         self.order2_ind=None
         self.s21_j1j2=None 
         self.s22_j1j2=None
+
     
     def __call__(self, x):
         """
@@ -97,12 +98,26 @@ class scatteringHandler():
             
             coeff : numpy.array
         """
-        if self.cuda and torch.cuda.is_available() and x.device.type=='cpu':
-            x=x.cuda()
+     
         if self.coeff is None:
-            res=self.scattering(x)
+            
+            Nbatch, Nch, Size=x.shape[0],x.shape[1], x.shape[-1]
+            
+            Ncoeffs=1+self.J*self.L+(self.L**2)*(self.J*(self.J-1)//2)
+            Slice=Nbatch//16
+            
+            res=torch.zeros((Nbatch,Nch,Ncoeffs, Size//2**self.J,Size//(2**self.J)))
+            
+            for i in range(16):
+                print('slice {}'.format(i))
+                
+                y=torch.tensor(x[Slice*i:Slice*(i+1)],dtype=torch.float32).cuda()
+
+                res0=self.scattering(y)
+                res[Slice*i: Slice*(i+1)]=res0.cpu()
+                del res0
         if type(res)==torch.Tensor :
-            self.coeff=res.detach().cpu().numpy()
+            self.coeff=res.numpy()
         else:
             self.coeff=res
         return self.coeff
@@ -289,7 +304,7 @@ class scatteringHandler():
     
     
 class scattering_metric():
-    def __init__(self, J,L, shape, estimator):
+    def __init__(self, J,L, shape, estimator, backend='numpy', frontend='numpy', cuda=False):
         """
         Inputs:
         
@@ -299,9 +314,9 @@ class scattering_metric():
         
         """
         
-        self.scat_real=scatteringHandler(J,shape,L=L)
-        self.scat_fake=scatteringHandler(J, shape, L=L)
-        
+        self.scat_real=scatteringHandler(J,shape,L=L, frontend=frontend, backend=backend)
+        self.scat_fake=scatteringHandler(J, shape, L=L, frontend=frontend, backend=backend)
+        self.cuda=cuda
         if estimator=='s21':
             self.estName='sparsityEstimator'
         elif estimator=='s22':
@@ -326,11 +341,11 @@ class scattering_metric():
         """
         self.scat_real.reset()
         self.scat_fake.reset()
-        
+
         _=self.scat_real(real_data)
         _=self.scat_fake(fake_data)
         
         distance=wd.pointwise_W1(getattr(self.scat_real, self.estName)(),\
                                  getattr(self.scat_fake, self.estName)()).mean(axis=-1)
-        
+        print('distance shape',distance.shape)
         return distance

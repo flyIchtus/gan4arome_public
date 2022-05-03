@@ -10,7 +10,7 @@ code snippets
 
 """
 import numpy as np
-import metrics4arome as metrics
+#import metrics4arome as metrics
 import pickle
 from glob import glob
 import random
@@ -33,7 +33,18 @@ ID_file='IS_method_labels.csv'
 
 
 def split_dataset(file_list,N_parts):
+    """
+    randomly separate a list of files in N_parts distinct parts
     
+    Inputs :
+        file_list : a list of filenames
+        
+        N_parts : int, the number of parts to split on
+    
+    Returns :
+         list of N_parts lists of files
+    
+    """
     
     inds=[i*len(file_list)//N_parts for i in range(N_parts)]+[len(file_list)]
 
@@ -43,7 +54,7 @@ def split_dataset(file_list,N_parts):
     return [to_split[inds[i]:inds[i+1]] for i in range(N_parts)]
 
 
-def load_batch(file_list,number,CI,Shape=(3,128,128), option='real',\
+def load_batch(file_list,number,CI,option='real',\
                output_dir=None, output_id=None, save=False):
      
     """
@@ -65,17 +76,37 @@ def load_batch(file_list,number,CI,Shape=(3,128,128), option='real',\
     """
     
     if option=='fake':
+        # in this case samples can either be in isolated files or grouped in batches
         
-        Mat=np.zeros((number, Shape[0], Shape[1], Shape[2]), dtype=np.float32)
+        Shape=np.load(file_list[0]).shape
+        
+        if len(Shape)==3:
+            
+            Mat=np.zeros((number, Shape[0], Shape[1], Shape[2]), dtype=np.float32)
+            
+        elif len(Shape)==4:
+            
+            Mat=np.zeros((number*Shape[0], Shape[1], Shape[2], Shape[3]), \
+                                                         dtype=np.float32)
         
         list_inds=random.sample(file_list, number)
         
         for i in range(number):
-            Mat[i]=np.load(list_inds[i])[:,:Shape[1],:Shape[2]].astype(np.float32)
+            
+            if len(Shape)==3:
+                
+                Mat[i]=np.load(list_inds[i]).astype(np.float32)
+                
+            elif len(Shape)==4:
+                
+                Mat[i*Shape[0]: (i+1)*Shape[0]]=\
+                np.load(list_inds[i]).astype(np.float32)
             
     elif option=='real':
+        # in this case samples oare stored once per file
         
         Shape=np.load(file_list[0])[1:4,CI[0]:CI[1], CI[2]:CI[3]].shape
+        
         Mat=np.zeros((number, Shape[0], Shape[1], Shape[2]), dtype=np.float32)
         
         list_inds=random.sample(file_list, number)
@@ -134,15 +165,20 @@ def build_datasets(data_dir, program,step=None, option='real'):
     Inputs :
         data_dir : str, the directory to get the data from
         program : dict,the datasets to be constructed
-                dict { dataset_id : (parts_number, n_samples)}
+                dict { dataset_id : (N_parts, n_samples)}
                 
         step : None or int -> if None, normal search among generated samples
                               if int, search among generated samples at the given step
                               (used in learning dynamics mapping)
     
+    Returns :
+        res, dictionary of the shape {dataset_id : file_list}
+        !!! WARNING !!! : the shape of file_list depends on the number of parts
+        specified in the "program" items. Can be nested.
+    
     """
     if step is not None:
-        name='_Fsample_'+str(step)+'_'
+        name='_FsampleChunk_'+str(step)+'_'
     else:
         name='_Fsample'
         
@@ -152,7 +188,7 @@ def build_datasets(data_dir, program,step=None, option='real'):
     else:
         globList=glob(data_dir+'_sample*')
     res={}
-    print(len(globList))
+    
     
     for key, value in program.items():
         if value[0]==2:
@@ -161,7 +197,7 @@ def build_datasets(data_dir, program,step=None, option='real'):
             
             res[key]=split_dataset(fileList,2)
                         
-        elif value[0]==1:
+        if value[0]==1:
             
             fileList=random.sample(globList,value[1])
             
@@ -178,7 +214,7 @@ def eval_distance_metrics(data, option='from_names'):
        data : tuple of 
            metric : str, the name of a metric in the metrics4arome namespace
            dataset : 
-               dict of file lists /str (option='from_names')
+               dict of file lists (option='from_names') /str (option 'from_matrix')
                
                Identifies the file names to extract data from
            index : int, identifier to the data passed 
@@ -192,7 +228,8 @@ def eval_distance_metrics(data, option='from_names'):
         results : np.array containing the calculation of the metric
     """
     metric, dataset, index, cuda=data
-    number=len(dataset['real'])
+    number_real=len(dataset['real'])
+    number_fake=len(dataset['fake'])
     if index%32==0: 
         print(index)
 
@@ -203,54 +240,113 @@ def eval_distance_metrics(data, option='from_names'):
     if option=='from_names':
         
         assert(type(dataset['fake'])==list)
-        fake_data=gather(dataset['fake'], 129,['u','v','t2m'])
+        fake_data=load_batch(dataset['fake'], number_fake,CI,option='fake')
     
     if option=='from_matrix':
        
         assert(type(dataset['fake']==str))
+        
         fake_data=np.load(dataset['fake'], dtype=np.float32)
         
-    real_data=load_batch(dataset['real'],number, CI)
+    real_data=load_batch(dataset['real'],number_real, CI)
     
     Means=np.load(data_dir+'mean_with_orog.npy')[1:4].reshape(1,3,1,1)
     Maxs=np.load(data_dir+'max_with_orog.npy')[1:4].reshape(1,3,1,1)
     real_data=normalize(real_data,Means, Maxs)
     
+    
     if cuda :
+        
         real_data=torch.tensor(real_data, dtype=torch.float32).cuda()
         fake_data=torch.tensor(fake_data, dtype=torch.float32).cuda()
     
     results.append(Metric(real_data, fake_data))
     return np.array(results)
 
-def global_dataset_eval(data):
+def global_dataset_eval(data, option='from_names', data_option='real'):
     """
     variable-wise evaluation of metric on the DataSet (treated as a single numpy matrix)
     
+    data : tuple of str, dict, int
+        metric : str, the name of a metric in the metrics4arome namespace
+        dataset :
+            file list /str
+        
+        ind : identifier of the call to function
     """
     metric, DataSet,ind=data
     var_names=['u','v','t2m']
     Metric=getattr(metrics,metric)
     #print('gathering')
-    dataset=gather(DataSet,128,var_names)
     
-    #print('scaling')
-    #Means=np.load(data_dir+'mean_with_orog.npy')[1:4].reshape(1,3,1,1)
-    #Maxs=np.load(data_dir+'max_with_orog.npy')[1:4].reshape(1,3,1,1)
+    if option=="from_names":
+        assert(type(DataSet)==list)
+        number=len(DataSet)
+        data=load_batch(DataSet, number,CI,option=data_option)
+       
+
+    if option=='from_matrix':
+       
+        assert(type(DataSet)==str)
+        
+        data=np.load(DataSet, dtype=np.float32)
     
-    #dataset=normalize(dataset,Means, Maxs)
+    if data_option=='real':
+        Means=np.load(data_dir+'mean_with_orog.npy')[1:4].reshape(1,3,1,1)
+        Maxs=np.load(data_dir+'max_with_orog.npy')[1:4].reshape(1,3,1,1)
+    
+        data=normalize(data,Means, Maxs)
     
     if ind%32==0:
         print(ind)
     results=[]
     
     for i,var in enumerate(var_names):
-        results.append(Metric(dataset[:,i,:,:]))
+        results.append(Metric(data[:,i,:,:]))
         
     if type(results[-1])==tuple:
         return results[0][0], np.array([results[i][1] for i in range(len(var_names))])
     
     return np.array(results)
+
+def save_metric_results(metric, name,arrays):
+    """
+    Save metric results stored in arrays list into a pickle dictionary
+    
+    Inputs :
+        metric : str, the name of a metric in the metrics4arome namespace
+    
+        name : str, the additional name to add to the saved file
+        
+        arrays : list of np.ndarrays to be saved (each  being a results of  a metric calculation)
+    """
+    
+    dic={}
+    for i, arr in enumerate(arrays):
+        dic[i]=arr
+    pickle.dump(dic, open(metric+'_'+name+'.p', 'wb'))
+    
+    
+def average_dynamics(step,N_samples,directories):
+    """
+    compute an average of different metrics dynamics stored in separate directories
+    """
+    dir0=directories[0]
+    
+    results=pickle.load(open(dir0+str(step)+'_'+str(N_samples)+'.p','rb'))
+    metrics_list=results["header"]
+    MEAN_RES={k : v for (k,v) in results.items()}
+    
+    for direct in directories:
+
+        res=pickle.load(open(dir0+str(step)+'_'+str(N_samples)+'.p','rb'))
+        for metric in metrics_list:
+            MEAN_RES[metric]+=res[metric]
+            
+    for metric in metrics_list:
+        MEAN_RES[metric]=MEAN_RES[metric]/len(directories)
+        
+    return MEAN_RES
 
 def compute_and_save(metric, N_samples,ddir=data_dir,\
                      repeats=1, distance=True,

@@ -9,7 +9,7 @@ executable file for scattering coefficients
 
 """
 
-import wavelets_and_scattering as waSc
+import scattering_funcs as waSc
 import scattering_plot as scPl
 import torch
 from time import perf_counter

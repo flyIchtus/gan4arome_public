@@ -85,7 +85,7 @@ class ISData_Loader():
         if kwargs is not None :
             with FileLock(os.path.expanduser("~/.horovod_lock")):    
                 dataset=ISDataset(self.path, 'IS_method_labels.csv',\
-                                  (78,207,55,184),self.transform(True,True),\
+                                  (78,206,55,183),self.transform(True,True),\
                                   add_coords=self.add_coords) # coordinates of subregion
 
         self.sampler=DistributedSampler(
