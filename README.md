@@ -21,4 +21,5 @@ metrics4arome : contains the implementations of the many metrics used to compare
 score_crawl : contains automation scripts to apply metrics on diverse sources of data using different modes (parallelization, GPU/CPU).
 
 
-Requires : torch, numpy, horovod, kymatio
+*Requirements :* 
+torch, numpy, horovod, kymatio
