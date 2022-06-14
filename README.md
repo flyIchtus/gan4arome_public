@@ -12,6 +12,8 @@ Distributed under CC-BY-SA, free for personal use and modification of any kind.
 
 experimental : contains unfinished/untested features related to architectures, data preprocessing, training algorithms
 
+importance sampling : contains scripts to resample data according to their "importance" (amount of meteorological information they contain)
+
 gan_horovod : contains up-to-date GAN training logics, networks architectures and  data pipelining, interfacing horovod API.
 
 gan_std : is the original library (not up-to-date) containing basic training logics and no interface for multi-GPU.
