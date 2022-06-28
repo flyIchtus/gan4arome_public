@@ -54,7 +54,6 @@ def W1_on_image_samples(real_data, fake_data, num_proc=4,\
 def W1_center(real_data, fake_data,Crop_Size=64):
     """
     compute the Wasserstein distance between real_data and fake_data
-    using real_weights and fake weights as importance weights
     
     data is cropped at the center so as to reduce comput. overhead
     
@@ -75,13 +74,13 @@ def W1_center(real_data, fake_data,Crop_Size=64):
                 dist=dist+torch.abs(real-fake).mean()
     return dist*(1e3/(Crop_Size**2*Channel_size))
 
-def W1_random(real_data, fake_data, pixel_num=4096):
+def W1_random(real_data, fake_data, pixel_num=16384):
     
     """
     compute the Wasserstein distance between real_data and fake_data
-    using real_weights and fake weights as importance weights
-    
-    data is cropped at the center so as to reduce comput. overhead
+
+    random pixels up to a fixed number are selected to compute wasserstein 
+    distance on them
     
     """
     
