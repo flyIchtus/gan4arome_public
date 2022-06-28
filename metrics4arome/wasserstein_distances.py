@@ -12,6 +12,7 @@ import scipy.stats as sc
 import torch
 import numpy as np
 from multiprocessing import Pool
+from math import sqrt
 
 ###############################################################################
 ################### Wasserstein distances ############################
@@ -73,6 +74,36 @@ def W1_center(real_data, fake_data,Crop_Size=64):
                 fake,_=torch.sort(fake_data[:,c,i,j],dim=0)
                 dist=dist+torch.abs(real-fake).mean()
     return dist*(1e3/(Crop_Size**2*Channel_size))
+
+def W1_random(real_data, fake_data, pixel_num=4096):
+    
+    """
+    compute the Wasserstein distance between real_data and fake_data
+    using real_weights and fake weights as importance weights
+    
+    data is cropped at the center so as to reduce comput. overhead
+    
+    """
+    
+    h,w=real_data.shape[2], real_data.shape[3]
+    
+    x_ind=np.random.randint(0,h,size=pixel_num)
+    y_ind=np.random.randint(0,w,size=pixel_num)
+    
+    real_data=real_data[:,:, x_ind, y_ind]
+    fake_data=fake_data[:,:, x_ind, y_ind]
+    
+    Channel_size=real_data.shape[1]
+    
+    dist=torch.tensor([0.], dtype=torch.float32).cuda()
+    for i in x_ind :
+        for j in y_ind :
+            for c in range(Channel_size):
+                real,_=torch.sort(real_data[:,c,i,j],dim=0)
+                fake,_=torch.sort(fake_data[:,c,i,j],dim=0)
+                dist=dist+torch.abs(real-fake).mean()
+    return dist*(1e3/(pixel_num**2*Channel_size))
+    
 
 class pixel_W1():
     """

@@ -264,6 +264,7 @@ class scattering_metric():
                 distance_perVar[i]=sw.sliced_wasserstein(est_real[:,i], est_fake[:,i],\
                                                     dir_repeats=dir_repeats, dirs_per_repeat=dirs_per_repeat)
             print('SWD perVar time', perf_counter()-t2)
+            
             ### per channel normalisation (equiv to batch + instance norm)
             
             est_real -= est_real.mean(axis=(0,-1), keepdims=True)
@@ -273,7 +274,7 @@ class scattering_metric():
             est_fake /= est_fake.std(axis=(0,-1), keepdims=True)
             
             
-            ### swd on normal samples
+            ### swd on normalized samples
             
             est_real = est_real.reshape(est_real.shape[0],-1)
             est_fake = est_fake.reshape(est_fake.shape[0], -1)
@@ -346,9 +347,9 @@ class scattering_metric():
             
             t1=perf_counter()
             
-            est_real=getattr(self.scat_real, self.estName)()
+            est_real=getattr(self.scat_real, estName)()
             est_real = est_real.reshape(est_real.shape[0],est_real.shape[1],-1)
-            est_fake=getattr(self.scat_fake, self.estName)()
+            est_fake=getattr(self.scat_fake, estName)()
             est_fake = est_fake.reshape(est_fake.shape[0], est_fake.shape[1],-1)
             
             print('estimator time',perf_counter()-t1)
@@ -365,7 +366,7 @@ class scattering_metric():
             print('SWD perVar time', perf_counter()-t2)
             
             
-            ### swd on normal samples
+            ### swd on full samples
             
             est_real = est_real.reshape(est_real.shape[0],-1)
             est_fake = est_fake.reshape(est_fake.shape[0], -1)
@@ -411,9 +412,9 @@ class scattering_metric():
         distances=[]
         for estName in self.estNames : # applying the same logic for different estimators
         
-            est_real=getattr(self.scat_real, self.estName)()
+            est_real=getattr(self.scat_real, estName)()
             est_real = est_real.reshape(est_real.shape[0],est_real.shape[1],-1)
-            est_fake=getattr(self.scat_fake, self.estName)()
+            est_fake=getattr(self.scat_fake, estName)()
             est_fake = est_fake.reshape(est_fake.shape[0], est_fake.shape[1],-1)
             
             distance_perVar=np.zeros(est_real.shape[1])
