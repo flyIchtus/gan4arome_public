@@ -13,7 +13,6 @@ Using package kymatio
 """
 
 from kymatio import Scattering2D
-import wasserstein_distances as wd
 import numpy as np
 from glob import glob
 import torch
@@ -64,7 +63,7 @@ class scatteringHandler():
     def __init__(self,J,shape,L=8, \
                  max_order=2,pre_pad=False, \
                  frontend='numpy',\
-                 backend='numpy',out_type='array', cuda=True):
+                 backend='numpy',out_type='array', cuda=False):
         
         self.scattering=Scattering2D(J,shape,L,
              max_order=max_order,pre_pad=pre_pad,
@@ -75,7 +74,7 @@ class scatteringHandler():
             self.scattering.cuda()
         self.J=J
         self.L=L
-        
+        self.shape=shape
         self.coeff=None # where the result of the call we be stored
         self.S1_j1=None
         self.S2_j1j2=None
@@ -93,6 +92,8 @@ class scatteringHandler():
         
         Inputs:
             x : numpy array or torch tensor; shape is batch x Var x Height x Width
+            
+            batch is preferably a power of 2
         
         Returns :
             
@@ -102,29 +103,49 @@ class scatteringHandler():
         if self.coeff is None:
             
             Nbatch, Nch, Size=x.shape[0],x.shape[1], x.shape[-1]
+            Sizemax=self.shape[-1]
             
-            Ncoeffs=1+self.J*self.L+(self.L**2)*(self.J*(self.J-1)//2)
-            Slice=Nbatch//16
             
-            res=torch.zeros((Nbatch,Nch,Ncoeffs, Size//2**self.J,Size//(2**self.J)))
+            if Size>Sizemax:
+                x=x[:,:,:Sizemax,:Sizemax]
+            elif Size<Sizemax:
+                raise ValueError('Wrong data dimension')
             
-            for i in range(16):
-                print('slice {}'.format(i))
+            Ncoeffs=1 + self.J * self.L + (self.L**2) * (self.J * (self.J-1) //2)
+            
+            
+            if self.cuda :
                 
-                y=torch.tensor(x[Slice*i:Slice*(i+1)],dtype=torch.float32).cuda()
+                
+                if Nbatch>1024: # if the data shape is too large for GPU memory, 
+                                    # slicing into chunks is performed
+                    steps=Nbatch//1024
+                    Slice=Nbatch//steps
+                    res=torch.zeros((Nbatch,Nch,Ncoeffs, Sizemax//2**self.J,Sizemax//(2**self.J)))
+                    
+                    for i in range(steps) :       
+                        
+                        y=torch.tensor(x[Slice*i:Slice*(i+1)],dtype=torch.float32).cuda()
+        
+                        res0=self.scattering(y)
+                        res[Slice*i: Slice*(i+1)]=res0.cpu()
+                        del res0
+                        
+                else :
+                    res=self.scattering(x.cuda())
+                
+                self.coeff=res.numpy()
+                
+                
+            else :
+                self.coeff=self.scattering(x)
 
-                res0=self.scattering(y)
-                res[Slice*i: Slice*(i+1)]=res0.cpu()
-                del res0
-        if type(res)==torch.Tensor :
-            self.coeff=res.numpy()
-        else:
-            self.coeff=res
+            
         return self.coeff
     
     def reset(self):
         """
-        put all relevant fields to None so that computing can be done again
+        put all relevant fields to None so that computing can be done with new data
         """
         
         self.coeff=None # where the result of the call we be stored
@@ -142,7 +163,11 @@ class scatteringHandler():
             0 : mean coefficient
             1 : pixel-averaged first-order coefficients (scale, orientation dependent)
             2 : pixel-averaged second-order coefficients (scale 1, scale 2, orientation dependent)
-            
+            distance_perVar=np.zeros(est_real.shape[1])
+        
+        for i in range(est_real.shape[1]):
+            distance_perVar[i]=sw.sliced_wasserstein(est_real[:,i], est_fake[:,i],\
+                                                dirs_repeat=128, dirs_per_repeat=128)
         Returns :
             numpy array or torch tensor corresponding to the extracted indexes
         """
@@ -263,6 +288,7 @@ class scatteringHandler():
         
         if scat is None:
             scat=self.order_extractor(2)
+            
         if self.order2_ind is None:
             #indexing as provided by the kymatio documentation
             
@@ -301,51 +327,3 @@ class scatteringHandler():
         self.s22_j1j2=np.array(s22_j1j2).transpose(1,2,0)
         
         return self.s22_j1j2
-    
-    
-class scattering_metric():
-    def __init__(self, J,L, shape, estimator, backend='numpy', frontend='numpy', cuda=False):
-        """
-        Inputs:
-        
-        scat_real, scat_fake  : scatteringHandlers obj, one for each data array
-            
-        estimator : str, choice between s22 (shape), s21 (sparsity) 
-        
-        """
-        
-        self.scat_real=scatteringHandler(J,shape,L=L, frontend=frontend, backend=backend)
-        self.scat_fake=scatteringHandler(J, shape, L=L, frontend=frontend, backend=backend)
-        self.cuda=cuda
-        if estimator=='s21':
-            self.estName='sparsityEstimator'
-        elif estimator=='s22':
-            self.estName='shapeEstimator'
-        elif estimator=='S1':
-            self.estName='isotropicEstimator'
-        else:
-            raise ValueError('Unknown estimator')
-
-    def scattering_distance(self,real_data,fake_data):
-        """
-        return average of Wasserstein distances between sets of scattering estimators
-        for real and generated (fake)data
-        
-        Inputs :
-            real_data, fake_data : numpy arrays
-            
-        
-        Returns :
-            
-            distance : float, result of Mean(Wasserstein(estim_real, estim_fake))
-        """
-        self.scat_real.reset()
-        self.scat_fake.reset()
-
-        _=self.scat_real(real_data)
-        _=self.scat_fake(fake_data)
-        
-        distance=wd.pointwise_W1(getattr(self.scat_real, self.estName)(),\
-                                 getattr(self.scat_fake, self.estName)()).mean(axis=-1)
-        print('distance shape',distance.shape)
-        return distance

@@ -41,9 +41,10 @@ def finalize_descriptors(desc):
     if isinstance(desc, list):
         desc = np.concatenate(desc, axis=0)
     assert desc.ndim == 4 # (neighborhood, channel, height, width)
-    desc -= np.mean(desc, axis=(0, 2, 3), keepdims=True)
-    desc /= np.std(desc, axis=(0, 2, 3), keepdims=True)
-    desc = desc.reshape(desc.shape[0], -1)
+    desc -= np.mean(desc, axis=(0, 2, 3), keepdims=True) # normalizing on each channel
+    desc /= np.std(desc, axis=(0, 2, 3), keepdims=True)  # similar to batch+instance norm
+                                                         # actually this is weird and not quite justified ?
+    desc = desc.reshape(desc.shape[0], -1) #reshaping
     return desc
 
 #----------------------------------------------------------------------------

@@ -23,13 +23,14 @@ import metrics4arome.wasserstein_distances as WD
 import metrics4arome.sliced_wasserstein as SWD
 import metrics4arome.spectrum_analysis as Spectral
 import metrics4arome.inception_metrics as inception
-import metrics4arome.scattering_funcs as scat
+import metrics4arome.scattering_metric as scat
 import metrics4arome.structure_functions as sfunc
 
 ########################### High level APIs ##################################
 
 class metric2D():
     def __init__(self,long_name,func,names):
+        
         self.long_name=long_name
         self.func=func #should return np.array OR tensor to benefit from parallel estimation
         self.names=names # list of names for each of the func's output items
@@ -90,18 +91,19 @@ fid=metric2D('Fréchet Inception Distance  ',\
              inception.FIDclass(inception.inceptionPath).FID,\
              ['FID'])
 
-# scattering metrics
+# scattering metrics with sparsity and shape estimators
+
 print('scattering')
-scat_sparse=scat.scattering_metric(J=6,L=8,shape=(128,128), estimator='s21',\
-                                   frontend='torch', backend='torch', cuda=True)
-sparse_metric=metric2D('Sparsity Estimator ', scat_sparse.scattering_distance,\
+scat_sparse=scat.scattering_metric(
+        J=4,L=8,shape=(127,127), estimators=['s21', 's22'],
+        frontend='torch', backend='torch', cuda=True
+                                   )
+#two versions of the same metrics
+scat_SWD_metric=metric2D('Scattering Estimators ', scat_sparse.scattering_sliced,\
                        ['s21_u', 's21_v','s21_t2m'])
 
-
-scat_shape=scat.scattering_metric(J=6,L=8,shape=(128,128), estimator='s22',\
-                                  frontend='torch', backend='torch', cuda=True)
-shape_metric=metric2D('Sparsity Estimator ', scat_shape.scattering_distance,\
-                       ['s22_u', 's22_v','s22_t2m'])
+scat_SWD_metric_renorm=metric2D('Scattering Estimator', scat_sparse.scattering_renorm,
+                              ['s21_u', 's21_v', 's21_t2m'])
 
 # structure functions 
 

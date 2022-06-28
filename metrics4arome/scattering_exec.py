@@ -13,19 +13,19 @@ import scattering_funcs as waSc
 import scattering_plot as scPl
 import torch
 from time import perf_counter
-import pickle
+
 
 DATA_DIR='/scratch/mrmn/brochetc/GAN_2D/Sud_Est_Baselines_IS_1_1.0_0_0_0_0_0_256_done/'
 DATA_DIR_F='/scratch/mrmn/brochetc/GAN_2D/Set_13/resnet_128_wgan-hinge_64_64_1_0.001_0.001/Instance_1/samples/Best_model_dataset/'
 output_dir='/scratch/mrmn/brochetc/GAN_2D/Set_13/resnet_128_wgan-hinge_64_64_1_0.001_0.001/Instance_1/log/'
 CI=[78,206,55,183]
 
-J,L=6,8
+J,L=4,8
 
-scattering_real=waSc.scatteringHandler(J,(128,128),backend='torch',\
-                                           frontend='torch',L=L, cuda=True)
-scattering_fake=waSc.scatteringHandler(J,(128,128),backend='torch',\
-                                           frontend='torch',L=L, cuda=True)
+scattering_real=waSc.scatteringHandler(J,(128,128),backend='numpy',\
+                                           frontend='numpy',L=L)
+scattering_fake=waSc.scatteringHandler(J,(128,128),backend='numpy',\
+                                           frontend='numpy',L=L)
 
 N_tests=1
 dic_fake={'S1_l' :[],'s21' :[],'s22': []}

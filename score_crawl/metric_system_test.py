@@ -39,7 +39,9 @@ def getAndmakeDirs():
     
     parser=argparse.ArgumentParser()
     
+    
     parser.add_argument('-expe_set', type=int,help='Set of experiments to dig in.')
+    parser.add_argument('-lr0', type=str2list, help='initial learning rates experimented')
     parser.add_argument('-batch_sizes',type=str2list, help='Set of batch sizes experimented')
     parser.add_argument('-instance_num', type=str2list, help='Instances of experiment to dig in')
     
@@ -48,17 +50,17 @@ def getAndmakeDirs():
     
     names=[]
     list_steps=[]
-    
-    for batch in config.batch_sizes :
-        print(batch)
-        for instance in config.instance_num:
-            names.append('/scratch/mrmn/brochetc/GAN_2D/Set_'+str(config.expe_set)\
-                                +'/resnet_128_wgan-hinge_64_'+str(batch)+\
-                                '_1_0.001_0.001/Instance_'+str(instance))
-            if int(batch)<=64:
-                list_steps.append([1500*k for k in range(40)]+[59999])
-            else:
-                list_steps.append([1500*k for k in range(22)])
+    for lr in config.lr0 :
+        for batch in config.batch_sizes :
+            print(batch)
+            for instance in config.instance_num:
+                names.append('/scratch/mrmn/brochetc/GAN_2D/Set_'+str(config.expe_set)\
+                                    +'/resnet_128_wgan-hinge_64_'+str(batch)+\
+                                    '_1_'+str(lr)+'_'+str(lr)+'/Instance_'+str(instance))
+                if int(batch)<=64:
+                    list_steps.append([1500*k for k in range(40)]+[59999])
+                else:
+                    list_steps.append([1500*k for k in range(22)])
     data_dir_names, log_dir_names=[f+'/samples/' for f in names],[f+'/log/' for f in names]
     
         
@@ -213,18 +215,21 @@ def parallelEstimation_standAlone(data_dir_f, data_dir, log_dir, steps, program=
 if __name__=="__main__":
     N_samples_fake=16 #16384]
     N_samples_real=16384    
-    program={i :(2,N_samples_real) for i in range(10)}  
-    distance_metrics_list=["sparse_metric","shape_metric"]
+    program={i :(1,N_samples_real) for i in range(1)}  
+    distance_metrics_list=["scat_SWD_metric","scat_SWD_metric_renorm"]
     stand_alone_metrics_list=["spectral_compute", "struct_metric"]
 
     for data_dir_f, log_dir, steps in zip(data_dirs_f, log_dirs, list_steps):
         try:
             
            #parallelEstimation_standAlone(data_dir_f, data_dir, log_dir, steps)
-           logdir0=data_dir
-           sequentialEstimation_realVSreal(data_dir,\
-                                           logdir0, program, add_name='fid')
-           break
+           #logdir0=data_dir
+           #sequentialEstimation_realVSfake(data_dir,\
+           #                                logdir0, program, add_name='fid')
+           #break
+           sequentialEstimation_realVSfake(data_dir_f, data_dir,\
+                                           log_dir,steps, program, 
+                                           add_name='swd_scat_comparison_')
            
         except (FileNotFoundError, IndexError):
             print('File Not found  for {}  !'.format(data_dir_f))
