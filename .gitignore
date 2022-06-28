@@ -1,0 +1,18 @@
+#
+# Jupyter
+#
+**/__pycache__
+**/*.pyc
+**/.ipynb_checkpoints
+**/*.slides.html
+**/tmp-data
+**/inception_v3_weights
+**/slurms
+
+# Documentation
+doc_sphinx/build
+doc_sphinx/pydap
+doc_sphinx/source/library
+
+# swap files
+**/.*.swp
