@@ -20,7 +20,6 @@ from glob import glob
 import numpy as np
 from multiprocessing import Pool
 
-CI=(78,206,55,183)
 
 def str2list(li):
     if type(li)==list:

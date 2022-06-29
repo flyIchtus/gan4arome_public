@@ -14,7 +14,6 @@ import metrics4arome as metrics
 import pickle
 from glob import glob
 import random
-import torch
 
 
 
@@ -109,40 +108,6 @@ def load_batch(file_list,number,CI,option='real',\
             Mat[i]=np.load(list_inds[i])[1:4,CI[0]:CI[1], CI[2]:CI[3]].astype(np.float32)
             
     return Mat
-
-
-def gather(file_list, LatSize,var_names,output_dir=None, output_id=None, save=False):
-    """
-    
-    DEPRECATED
-    
-    gather all the samples present in file_List into a single big matrix
-    this matrix is returned
-    
-    Inputs :
-        file_list : list of files to be sampled from
-        output_dir : str of the directory to save datasets
-        output_id : name of the dataset to be saved
-        var_names : list of 'channel' variables present in the dataset
-    
-    Returns :
-        Mat : numpy array, shape  number x C x LatSize x LonSize matrix
-        
-    """
-    
-    Nsamples=len(file_list)
-    Nvar=len(var_names)
-    BigMat=np.zeros((Nsamples, Nvar,LatSize, LatSize))
-    for i,sample_path in enumerate(file_list) :
-        sample=np.float32(np.load(sample_path))
-        if sample.shape[1]>LatSize:
-            sample=sample[1:4,CI[0]:CI[1],CI[2]:CI[3]]
-    
-        BigMat[i,:,:,:]=sample
-    if save :
-        np.save(output_dir+output_id+'.npy', BigMat)
-    return BigMat
-
 
 
 def normalize(BigMat, Mean, Max):
