@@ -137,6 +137,10 @@ class Trainer():
         self.save_step=self.config.save_step
         self.plot_step=self.config.plot_step
         
+        self.var_indexes=[DSH.var_dict[var] for var in self.config.var_names]
+        self.crop_indexes=self.config.crop_indexes
+        
+        
     ########################## GET-READY FUNCTIONS ############################
     
     def instantiate_optimizers(self, modelG, modelD, load_optim, load_sched):
@@ -202,9 +206,11 @@ class Trainer():
         torch.set_num_threads(1)
 
         if hvd.rank()==0 : print("Loading data")
-        self.Dl_train=DSH.ISData_Loader(self.config.data_dir,self.batch_size,\
+        self.Dl_train=DSH.ISData_Loader(self.config.data_dir,self.batch_size,
+                                        self.var_indexes, self.crop_indexes,\
                                         add_coords=self.config.coords)
-        self.Dl_test=DSH.ISData_Loader(self.config.data_dir, self.config.test_samples,\
+        self.Dl_test=DSH.ISData_Loader(self.config.data_dir, self.config.test_samples,
+                                       self.var_indexes, self.crop_indexes,
                                        add_coords=self.config.coords)
         
         kwargs={'pin_memory': True}

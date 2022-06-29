@@ -25,17 +25,17 @@ import subprocess
           '--lrD_sched':['exp'], '--lrG_sched':['exp'], '--lrD_gamma':[0.95,0.9],\
           '--lrG_gamma':[0.95,0.9], '--ortho_init': [True]}"""
 
-ensemble={'--lr_D': [1e-3],'--lr_G' : [1e-3],'--batch_size':[64],\
-          '--n_dis':[1], '--sn_on_g': [True], '--use_amp':[True],'--warmup':[True],\
-          '--lrD_sched':['exp'], '--lrG_sched':['exp'], '--lrD_gamma':[0.9],\
-          '--lrG_gamma':[0.9], '--ortho_init': [True],'--test_samples':[1024],
-          '--coords': [False], '--g_channels':[3], '--d_channels':[3],\
-          '--test_step':[0]}
+ensemble={'--batch_size':[4],
+          '--n_dis':[1], '--sn_on_g': [True], '--use_amp':[True],'--warmup':[True],
+          '--lrD_sched':['exp'], '--lrG_sched':['exp'], '--lrD_gamma':[0.9],
+          '--lrG_gamma':[0.9], '--ortho_init': [True],
+          '--g_channels':[2], '--d_channels':[2],
+          '--plot_step':[1], '--var_names' : ["['t2m','orog']"], '--total_steps' :[3]}
 
 """,\
           '--LA_optimizer':[True],'--LA_k':[1000], '--LA_alpha':[0.3]}"""
 
-script_dir=os.getcwd()+'/'
+script_dir=os.getcwd()+'/slurms/'
 
 
 
@@ -56,19 +56,32 @@ def str2list(li):
         raise ValueError("li argument must be a string or a list, not '{}'".format(type(li)))
 
 def create_new(keyword):
+    """
+    create new directory with given keyword, when there are already other directories with
+    this keyword
+    
+    """
     previous=len(glob('*'+keyword+'*'))
     INSTANCE_NUM=previous+1
     os.mkdir(keyword+'_'+str(INSTANCE_NUM))
 
 def get_dirs():
+    
+    """
+    
+    check main directories for the experimentations
+    
+    """
+    
     parser=argparse.ArgumentParser()
-     # Path
+    
+    # Path
     parser.add_argument('--data_dir', type=str, \
                         default='/scratch/mrmn/brochetc/GAN_2D/Sud_Est_Baselines_IS_1_1.0_0_0_0_0_0_256_done/')
     parser.add_argument('--output_dir', type=str, \
-                        default=os.getcwd()+'/')
+                        default='/scratch/mrmn/brochetc/GAN_2D/')
     
-    parser.add_argument('--SET_NUM', type=int, default=0)
+    parser.add_argument('--SET_NUM', type=int, default=1)
     
     return parser.parse_args()
 
@@ -88,8 +101,8 @@ def get_expe_parameters():
     parser.add_argument('--latent_dim', type=int, default=64)
     parser.add_argument('--g_channels', type=int, default=3)
     parser.add_argument('--d_channels', type=int, default=3)
-    parser.add_argument('--g_output_dim', type=int, default=129)
-    parser.add_argument('--d_input_dim', type=int, default=129)
+    parser.add_argument('--g_output_dim', type=int, default=128)
+    parser.add_argument('--d_input_dim', type=int, default=128)
     parser.add_argument('--lamda_gp', type=float, default=10.0)
     parser.add_argument('--ortho_init',type=str2bool, default=False)
     
@@ -111,7 +124,7 @@ def get_expe_parameters():
                         help="Accumulation factor for batch_size")
     
     parser.add_argument('--lr_G', type=float, default=0.0001)
-    parser.add_argument('--lr_D', type=float, default=0.0002)
+    parser.add_argument('--lr_D', type=float, default=0.0001)
     
     parser.add_argument('--beta1_D', type=float, default=0.0)
     parser.add_argument('--beta2_D', type=float, default=0.9)
@@ -128,8 +141,9 @@ def get_expe_parameters():
     parser.add_argument('--LA_alpha', type=float, default=0.3,\
                         help="look_ahead step ratio")
     
-    # Channel data description
+    # Data description
     parser.add_argument('--var_names', type=str2list, default=['u','v','t2m'])#, 'orog'])
+    parser.add_argument('--crop_indexes', type=str2list, default=[78,206,55,183])
     
     #Training setting -schedulers
     parser.add_argument('--lrD_sched', type=str, default='None', \
@@ -158,7 +172,7 @@ def get_expe_parameters():
     parser.add_argument('--seed', type=int, default=42, metavar='S',
                     help='random seed (default: 42)')
 
-    # Path
+    # Paths
     parser.add_argument('--data_dir', type=str, \
                         default='/scratch/mrmn/brochetc/GAN_2D/Sud_Est_Baselines_IS_1_1.0_0_0_0_0_0_256_done/')
     parser.add_argument('--output_dir', type=str, \
@@ -173,9 +187,21 @@ def get_expe_parameters():
     
 
     config=parser.parse_args()
+    
+    ## security checkups
+    
     assert config.g_channels==len(config.var_names)+2*config.coords \
             and config.d_channels==len(config.var_names)+2*config.coords
+    
+    assert config.g_output_dim==config.d_input_dim
+    
+    H, W=config.crop_indexes[1]-config.crop_indexes[0], config.crop_indexes[3]-config.crop_indexes[2]
+    
+    assert H==W and H==config.d_input_dim
+    
     assert ((config.test_step==0) or (config.log_step%config.test_step==0))
+    
+    
     
     return parser
 
@@ -221,7 +247,7 @@ def nameSpace2SlurmArg(config):
             print(dic[key], str(dic[key]))
         value=dic[key]
         li.append('--'+key+'='+str(value))
-    print(li, "|".join(li))
+    print(li,'\n', "|".join(li))
     return "|".join(li)
     
 def prepare_expe(config):
@@ -287,11 +313,14 @@ def prepare_expe_set(where,expe_list):
         
         ns=argparse.Namespace(**params)
         config=get_expe_parameters().parse_args(namespace=ns)
+        
         print("config_var_names",config.var_names)
         NAME, expe_dir=prepare_expe(config)
         config.output_dir=expe_dir
         config_list.append(config)
         params["output_dir"]=expe_dir
+        
+        
         #writing in memo file
         strVals={key : str(value) for key, value in params.items()}
         strVals['directory']=NAME

@@ -24,6 +24,7 @@ torch.cuda.set_device(hvd.local_rank())
 
 config=get_expe_parameters().parse_args()
 
+
 if config.model=='resnet_aa':
     import resnets_antialiasing as RN
 elif config.model=='resnet':
