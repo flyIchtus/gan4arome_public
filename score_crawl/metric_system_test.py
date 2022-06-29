@@ -213,23 +213,20 @@ def parallelEstimation_standAlone(data_dir_f, data_dir, log_dir, steps, program=
 
 
 if __name__=="__main__":
-    N_samples_fake=16 #16384]
-    N_samples_real=16384    
-    program={i :(1,N_samples_real) for i in range(1)}  
-    distance_metrics_list=["scat_SWD_metric_renorm","scat_SWD_metric"]
-    stand_alone_metrics_list=["spectral_compute", "struct_metric"]
+    N_samples_fake=1 #16384]
+    N_samples_real=1024
+    program={i :(1,N_samples_real) for i in range(1)}
+    distance_metrics_list=["scat_SWD_renorm"]
+    stand_alone_metrics_list=["multivar"]#,"spectral_compute", "struct_metric"]
 
     for data_dir_f, log_dir, steps in zip(data_dirs_f, log_dirs, list_steps):
         try:
-            
-           #parallelEstimation_standAlone(data_dir_f, data_dir, log_dir, steps)
-           #logdir0=data_dir
-           #sequentialEstimation_realVSfake(data_dir,\
-           #                                logdir0, program, add_name='fid')
-           #break
+           print(data_dir_f)
+           #parallelEstimation_realVSfake(data_dir_f, data_dir, log_dir, program,steps, add_name='multivar_1_')
+           logdir0=data_dir
            sequentialEstimation_realVSfake(data_dir_f, data_dir,\
-                                           log_dir,steps, program, 
-                                           add_name='swd_scat_comparison_')
-           
+                                           log_dir,steps, program, add_name='swd_scat_renorm')
+
+
         except (FileNotFoundError, IndexError):
             print('File Not found  for {}  !'.format(data_dir_f))
