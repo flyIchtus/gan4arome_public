@@ -27,7 +27,7 @@ var_dict={'rr' : 0, 'u' : 1, 'v' : 2, 't2m' :3 , 'orog' : 4}
 ################
 class ISDataset(Dataset):
     
-    def __init__(self, data_dir, ID_file, crop_indexes, var_indexes,\
+    def __init__(self, data_dir, ID_file, var_indexes, crop_indexes,\
                  transform=None,add_coords=False):
         
         self.data_dir=data_dir
@@ -38,6 +38,8 @@ class ISDataset(Dataset):
         
         self.CI=crop_indexes
         self.VI=var_indexes
+        
+  
         
         ## adding 'positional encoding'
         self.add_coords=add_coords

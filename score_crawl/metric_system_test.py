@@ -10,7 +10,6 @@ Metrics Executable
 """
 
 import sys
-import argparse
 sys.path.append('/home/mrmn/brochetc/gan4arome/metrics4arome/')
 
 import metric_test_snippets as snip
@@ -21,54 +20,10 @@ import numpy as np
 from multiprocessing import Pool
 
 
-def str2list(li):
-    if type(li)==list:
-        li2=li
-        return li2
-    elif type(li)==str:
-        print(li)
-        li2=li[1:-1].split(',')
-        print(li2)
-        return li2
-    
-    else:
-        raise ValueError("li argument must be a string or a list, not '{}'".format(type(li)))
 
-def getAndmakeDirs():
-    
-    parser=argparse.ArgumentParser()
-    
-    
-    parser.add_argument('-expe_set', type=int,help='Set of experiments to dig in.')
-    parser.add_argument('-lr0', type=str2list, help='Initial learning rates experimented')
-    parser.add_argument('-batch_sizes',type=str2list, help='Set of batch sizes experimented')
-    parser.add_argument('-instance_num', type=str2list, help='Instances of experiment to dig in')
-    
-    config=parser.parse_args()
-    
-    
-    names=[]
-    list_steps=[]
-    for lr in config.lr0 :
-        for batch in config.batch_sizes :
-            print(batch)
-            for instance in config.instance_num:
-                names.append('/scratch/mrmn/brochetc/GAN_2D/Set_'+str(config.expe_set)\
-                                    +'/resnet_128_wgan-hinge_64_'+str(batch)+\
-                                    '_1_'+str(lr)+'_'+str(lr)+'/Instance_'+str(instance))
-                if int(batch)<=64:
-                    list_steps.append([1500*k for k in range(40)]+[59999])
-                else:
-                    list_steps.append([1500*k for k in range(22)])
-    data_dir_names, log_dir_names=[f+'/samples/' for f in names],[f+'/log/' for f in names]
-    
-        
-    return data_dir_names, log_dir_names, list_steps
 
-data_dir='/scratch/mrmn/brochetc/GAN_2D/Sud_Est_Baselines_IS_1_1.0_0_0_0_0_0_256_done/'
+########### standard parameters #####
 
-data_dirs_f, log_dirs, list_steps=getAndmakeDirs()
-print(len(data_dirs_f), len(log_dirs), len(list_steps))
 num_proc=4
 
 
@@ -211,24 +166,3 @@ def parallelEstimation_standAlone(data_dir_f, data_dir, log_dir, steps, program=
     
 
 
-if __name__=="__main__":
-    N_samples_fake=16 #16384]
-    N_samples_real=16384    
-    program={i :(1,N_samples_real) for i in range(1)}  
-    distance_metrics_list=["scat_SWD_metric_renorm","scat_SWD_metric"]
-    stand_alone_metrics_list=["spectral_compute", "struct_metric"]
-
-    for data_dir_f, log_dir, steps in zip(data_dirs_f, log_dirs, list_steps):
-        try:
-            
-           #parallelEstimation_standAlone(data_dir_f, data_dir, log_dir, steps)
-           #logdir0=data_dir
-           #sequentialEstimation_realVSfake(data_dir,\
-           #                                logdir0, program, add_name='fid')
-           #break
-           sequentialEstimation_realVSfake(data_dir_f, data_dir,\
-                                           log_dir,steps, program, 
-                                           add_name='swd_scat_comparison_')
-           
-        except (FileNotFoundError, IndexError):
-            print('File Not found  for {}  !'.format(data_dir_f))

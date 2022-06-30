@@ -14,59 +14,9 @@ Metric plots
 import matplotlib.pyplot as plt
 import numpy as np
 import pickle
-import argparse
 from metrics4arome import multivariate as mlt
 from mpl_toolkits.axes_grid1 import ImageGrid
-
-def str2list(li):
-    if type(li)==list:
-        li2=li
-        return li2
-    elif type(li)==str:
-        print(li)
-        li2=li[1:-1].split(',')
-        print(li2)
-        return li2
-    
-    else:
-        raise ValueError("li argument must be a string or a list, not '{}'".format(type(li)))
-
-
-def getAndmakeDirs():
-    
-    parser=argparse.ArgumentParser()
-    
-    parser.add_argument('-expe_set', type=int,help='Set of experiments to dig in.')
-    parser.add_argument('-batch_sizes',type=str2list, help='Set of batch sizes experimented')
-    parser.add_argument('-instance_num', type=str2list, help='Instances of experiment to dig in')
-    
-    config=parser.parse_args()
-    
-    
-    names=[]
-    short_names=[]
-    list_steps=[]
-    true_batches=[int(batch) for batch in config.batch_sizes]
-    true_instances=[int(insta) for insta in config.instance_num]
-    for batch in config.batch_sizes :
-        print(batch)
-        for instance in config.instance_num:
-            names.append('/scratch/mrmn/brochetc/GAN_2D/Saved_Sets_21062022/Set_'+str(config.expe_set)\
-                                +'/resnet_128_wgan-hinge_64_'+str(batch)+\
-                                '_1_0.001_0.001/Instance_'+str(instance))
-            short_names.append('Instance_{}_Batch_{}'.format(instance, batch))
-            if int(batch)<=64:
-                list_steps.append([1500*k for k in range(40)]+[59999])
-            else:
-                list_steps.append([1500*k for k in range(22)])
-    data_dir_names, log_dir_names=[f+'/samples/' for f in names],[f+'/log/' for f in names]
-    
-        
-    return data_dir_names, log_dir_names, short_names, list_steps, true_batches, true_instances
-
-log_dir='/scratch/mrmn/brochetc/GAN_2D/Saved_Sets_21062022/Set_38/Metrics_log/pw_W1/'
-real_dir='/scratch/mrmn/brochetc/GAN_2D/Sud_Est_Baselines_IS_1_1.0_0_0_0_0_0_256_done/'
-
+from config import getAndmakeDirs
 
 def plot_DistMetrics_Dynamics(list_steps,N_samples,shortNames, names,directories,prefix,output_dir, coolNames):
     """
@@ -184,7 +134,7 @@ def plot_multivariate_dynamics(list_steps, N_samples, names, directories, output
             res=pickle.load(open(path+'multivar0distance_metrics_16384.p', 'rb'))
             RES=res['multivar'].squeeze()
             for step in steps :
-                
+
                 data_r,data_f=RES[step//1500,0], RES[step//1500,1]
                 print(data_r.shape, data_f.shape)
             
@@ -256,6 +206,10 @@ if __name__=="__main__":
     #metric_coolNames={'sparse_metric' : 'Scattering Sparsity Wasserstein Distance', 'shape_metric' : 'Scattering Shape Wasserstein Distance'}
     #plot_DistMetrics_Dynamics(list_steps,N_samples,short_names,names, directories,prefix,log_dir, metric_coolNames)
     #plot_Spectrum_dynamics(indexes, names, real_dir, directories, ['u', 'v', 't2m'], log_dir)
+    
+    
+    log_dir='/scratch/mrmn/brochetc/GAN_2D/Saved_Sets_21062022/Set_38/Metrics_log/pw_W1/'
+    real_dir='/scratch/mrmn/brochetc/GAN_2D/Sud_Est_Baselines_IS_1_1.0_0_0_0_0_0_256_done/'
     
     N_samples=16384
     output_dir=log_dir
