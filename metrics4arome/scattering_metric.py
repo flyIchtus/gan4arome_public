@@ -9,10 +9,10 @@ scattering metrics
 
 """
 
-import scattering_funcs as scf
+import metrics4arome.scattering_funcs as scf
 import numpy as np
-import wasserstein_distances as wd
-import sliced_wasserstein as sw
+import metrics4arome.wasserstein_distances as wd
+import metrics4arome.sliced_wasserstein as sw
 from time import perf_counter
 
 class scattering_metric():
@@ -251,6 +251,7 @@ class scattering_metric():
             est_fake=getattr(self.scat_fake, estName)()
             est_fake = est_fake.reshape(est_fake.shape[0], est_fake.shape[1],-1)
             print('estimator time',perf_counter()-t1)
+            
             ### 1st and 2d moment distances on every d.o.f
             
             rmse_mean=np.sqrt(((est_fake.mean(axis=0)-est_real.mean(axis=0))**2).mean(axis=-1))

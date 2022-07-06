@@ -10,38 +10,6 @@ Radial structure correlation functions
 """
 import numpy as np
 from math import ceil
-import random
-from glob import glob
-
-def load_batch(path,number,CI,Shape=(3,128,128), option='fake'):
-    
-    if option=='fake':
-        
-        list_files=glob(path+'_Fsample_*.npy')
-
-        Mat=np.zeros((number, Shape[0], Shape[1], Shape[2]), dtype=np.float32)
-        
-        list_inds=random.sample(list_files, number)
-        for i in range(number):
-            Mat[i]=np.load(list_inds[i])[:,:Shape[1],:Shape[2]].astype(np.float32)
-            
-    elif option=='real':
-        
-        list_files=glob(path+'_sample*')
-        Shape=np.load(list_files[0])[1:4,CI[0]:CI[1], CI[2]:CI[3]].shape
-        Mat=np.zeros((number, Shape[0], Shape[1], Shape[2]), dtype=np.float32)
-        
-        list_inds=random.sample(list_files, number)
-        for i in range(number):
-            Mat[i]=np.load(list_inds[i])[1:4,CI[0]:CI[1], CI[2]:CI[3]].astype(np.float32)
-            
-            
-        Means=np.load(path+'mean_with_orog.npy')[1:4].reshape(1,3,1,1).astype(np.float32)
-        Maxs=np.load(path+'max_with_orog.npy')[1:4].reshape(1,3,1,1).astype(np.float32)
-        Mat=(0.95)*(Mat-Means)/Maxs
-        
-
-    return Mat
 
 
 def radial_bin(data, center):

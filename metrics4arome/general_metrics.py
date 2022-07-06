@@ -37,9 +37,9 @@ def orography_RMSE(fake_batch, test_data, usetorch=False):
     orog=test_data[0,-1:,:,:]
     fake_orog=fake_batch[:,-1:,:,:]
     if usetorch :
-        res=torch.sqrt(((fake_orog-orog)**2).mean())
+        res=torch.log10(torch.sqrt(((fake_orog-orog)**2).mean()))
     else :
-        res=np.sqrt(((fake_orog-orog)**2).mean())
+        res=np.log10(np.sqrt(((fake_orog-orog)**2).mean()))
     return res
 
 ########################### TODO : Structure functions ###############################

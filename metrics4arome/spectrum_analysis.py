@@ -116,17 +116,25 @@ def PowerSpectralDensity(x):
     of the data x
     
     Inputs :
-        x : numpy array, shape is B x N x N
+        x : numpy array, shape is B x C x N x N
     
     Return :
         
-        out : numpy array, shape is (Rmax,), defined in radial_bin_dct function
+        out : numpy array, shape is (C, Rmax), with R_max defined in radial_bin_dct function
     
     """
-    sig=dct_var(x).mean(axis=0)
     
-    center=(sig.shape[0]//2, sig.shape[1]//2)
-    out=radial_bin_dct(sig, center)
+    out_list = []
+    channels = x.shape[1]    
+    
+    for c in range(channels) :
+        x_c = x[:,c,:,:]
+        sig = dct_var(x_c).mean(axis=0)
+    
+        center = (sig.shape[0]//2, sig.shape[1]//2)
+        out_list.append(radial_bin_dct(sig, center))
+    
+    out=np.concatenate([np.expand_dims(o, axis = 0) for o in out_list], axis = 0)
     
     return out
 

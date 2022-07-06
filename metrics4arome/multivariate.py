@@ -276,7 +276,7 @@ def multi_variate_correlations(data_real, data_fake):
     out_rf=np.zeros((2, ncouples2//2,bivariates_f.shape[-1],bivariates_f.shape[-1]))
     out_rf[0]=bivariates_r
     out_rf[1]=bivariates_f
-    print('out shape',out_rf.shape)
+
     return out_rf
 
 
