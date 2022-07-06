@@ -2,24 +2,72 @@
 # -*- coding: utf-8 -*-
 """
 Created on Mon May  2 13:51:56 2022
-
 @author: brochetc
-
-
 Metric plots
-
 """
 
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pickle
+import argparse
 from metrics4arome import multivariate as mlt
 from mpl_toolkits.axes_grid1 import ImageGrid
-from config import getAndmakeDirs
 
-def plot_DistMetrics_Dynamics(list_steps,N_samples,shortNames, names,directories,prefix,output_dir, coolNames):
+def str2list(li):
+    if type(li)==list:
+        li2=li
+        return li2
+    elif type(li)==str:
+        print(li)
+        li2=li[1:-1].split(',')
+        print(li2)
+        return li2
+    
+    else:
+        raise ValueError("li argument must be a string or a list, not '{}'".format(type(li)))
+
+
+def getAndmakeDirs():
+    
+    parser=argparse.ArgumentParser()
+    
+    parser.add_argument('-expe_set', type=int,help='Set of experiments to dig in.')
+    parser.add_argument('-lr0', type=str2list, help='Initial learning rates experimented')
+    parser.add_argument('-batch_sizes',type=str2list, help='Set of batch sizes experimented')
+    parser.add_argument('-instance_num', type=str2list, help='Instances of experiment to dig in')
+    
+    config=parser.parse_args()
+    
+    
+    names=[]
+    short_names=[]
+    list_steps=[]
+    true_batches=[int(batch) for batch in config.batch_sizes]
+    true_instances=[int(insta) for insta in config.instance_num]
+    for lr in config.lr0 :
+        for batch in config.batch_sizes :
+            print(batch)
+            for instance in config.instance_num:
+                names.append('/scratch/mrmn/brochetc/GAN_2D/Set_'+str(config.expe_set)\
+                                    +'/resnet_128_wgan-hinge_64_'+str(batch)+\
+                                    '_1_'+str(lr)+'_'+str(lr)+'/Instance_'+str(instance))
+                short_names.append('Instance_{}_Batch_{}_LR_{}'.format(instance, batch, lr))
+                if int(batch)<=64:
+                    list_steps.append([1500*k for k in range(40)]+[59999])
+                else:
+                    list_steps.append([1500*k for k in range(22)])
+    data_dir_names, log_dir_names=[f+'/samples/' for f in names],[f+'/log/' for f in names]
+    
+        
+    return data_dir_names, log_dir_names, short_names, list_steps, true_batches, true_instances
+
+
+def plot_DistMetrics_Dynamics(list_steps,N_samples,shortNames, names,
+                              directories,prefix,output_dir, coolNames):
+    
     """
+    
     plot multi-metrics dynamics (with dynamics indexes in step list) of data present in directory
     
     """
@@ -44,14 +92,152 @@ def plot_DistMetrics_Dynamics(list_steps,N_samples,shortNames, names,directories
                 #plt.xticks((np.array(step_list)+1)/1000)
                 plt.ylabel("Log10 metric results", fontsize='x-large')
                 plt.grid()
+                
                 plt.legend()
                 plt.title(coolNames[metric], fontsize='x-large')
+                
                 plt.savefig(output_dir+"{}_{}_{}_dynamics_plot.png".format(shortNames[j],metric,names[i]))
                 plt.close()
         except FileNotFoundError :
             print(directory, prefix, N_samples)
             print('File not found !')
         
+
+def plot_specific_comparison(list_steps, N_samples, shortNames, names, 
+                             directories, prefix, output_dir):
+    """
+    
+    plot multi-metrics dynamics (with dynamics indexes in step list) of data present in directory
+    specific function to compare results for different metrics
+    """
+    
+    for j, directory in enumerate(directories):
+        try :  
+            results=pickle.load(open(directory+prefix+'_'+str(N_samples)+'.p','rb'))
+            metrics_list=results["header"]
+            step_list=list_steps[j]
+            for metric in metrics_list:
+                print(metric)
+                Shape=results[metric].squeeze().shape
+                print(Shape)
+                res=results[metric].squeeze()*1e3
+                if Shape[-1]==4 :   
+                
+                    fig, axs=plt.subplots(ncols=Shape[1],figsize=(15, 4*Shape[1]))
+                
+                    for i in range(Shape[1]):
+                        axs[i].plot(np.array(step_list)/1000, 
+                                 np.log10(res[:,i,0]), 
+                                 linewidth=2)
+                
+                        axs[i].set_xlabel("Iteration k-step", fontsize='x-large')
+                        axs[i].set_ylabel("Log10 metric results", fontsize='x-large')
+                        axs[i].grid()
+                        
+                        axs[i].legend(labels=names[metric][i])
+                    
+                    plt.tight_layout()
+                    plt.savefig(output_dir+"{}_{}_{}_dynamics_plot.png".format(shortNames[j],metric,'full'))
+                    plt.close()
+                    
+                    
+                    fig, axs=plt.subplots(ncols=Shape[1],figsize=(15, 4*Shape[1]))
+                
+                    for i in range(Shape[1]):
+                        for k in range(1,4):
+                            axs[i].plot(np.array(step_list)/1000, 
+                                     np.log10(res[:,i,k]), 
+                                     linewidth=2)
+                
+                        axs[i].set_xlabel("Iteration k-step", fontsize='x-large')
+                        axs[i].set_ylabel("Log10 metric results", fontsize='x-large')
+                        axs[i].grid()
+                        
+                        axs[i].legend(labels=[names[metric][k][i] for k in range(1,4)])
+
+                    plt.tight_layout()
+                    plt.savefig(output_dir+"{}_{}_{}_dynamics_plot.png".format(shortNames[j],metric,'per_var'))
+                    plt.close()
+                
+                elif Shape[-1]==10 :
+                    
+                    fig, axs=plt.subplots(ncols=Shape[1],figsize=(15, 4*Shape[1]))
+                
+                    for i in range(Shape[1]):
+                        for k in range(3):
+                            axs[i].plot(np.array(step_list)/1000, 
+                                     np.log10(res[:,i,k]), 
+                                     linewidth=2)
+                            
+                
+                        axs[i].set_xlabel("Iteration k-step", fontsize='x-large')
+                        axs[i].set_ylabel("Log10 metric results", fontsize='x-large')
+                        axs[i].grid()
+                        
+                        axs[i].legend(labels=[names[metric][k][i] for k in range(3)])
+         
+                    plt.tight_layout()
+                    plt.savefig(output_dir+"{}_{}_{}_dynamics_plot.png".format(shortNames[j],metric,'rmse_m'))
+                    plt.close()
+                    
+                    
+                    fig, axs=plt.subplots(ncols=Shape[1],figsize=(15, 4*Shape[1]))
+                
+                    for i in range(Shape[1]):
+                        for k in range(3,6):
+                            axs[i].plot(np.array(step_list)/1000, 
+                                     np.log10(res[:,i,k]), 
+                                     linewidth=2)
+                        axs[i].set_xlabel("Iteration k-step", fontsize='x-large')
+                        axs[i].set_ylabel("Log10 metric results", fontsize='x-large')
+                        axs[i].grid()
+                        
+                        axs[i].legend(labels=[names[metric][k][i] for k in range(3,6)])
+                        
+                        
+                    plt.tight_layout()
+                    plt.savefig(output_dir+"{}_{}_{}_dynamics_plot.png".format(shortNames[j],metric,'rmse_std'))
+                    plt.close()
+                    
+                    fig, axs=plt.subplots(ncols=Shape[1],figsize=(15, 4*Shape[1]))
+                
+                    for i in range(Shape[1]):
+
+                        axs[i].plot(np.array(step_list)/1000, 
+                                 np.log10(res[:,i,6]), 
+                                 linewidth=2, label=names[metric][6][i])
+                
+                        axs[i].set_xlabel("Iteration k-step", fontsize='x-large')
+                        axs[i].set_ylabel("Log10 metric results", fontsize='x-large')
+                        axs[i].grid()
+                        
+                        axs[i].legend()
+                    plt.tight_layout()
+                    plt.savefig(output_dir+"{}_{}_{}_dynamics_plot.png".format(shortNames[j],metric,'full'))
+                    plt.close()
+                    
+                    fig, axs=plt.subplots(ncols=Shape[1],figsize=(15, 4*Shape[1]))
+                    
+                    for i in range(Shape[1]):
+                        for k in range(7,10):
+                            axs[i].plot(np.array(step_list)/1000, 
+                                     np.log10(res[:,i,k]), 
+                                     linewidth=2, label=names[metric][k][i])
+                
+                        axs[i].set_xlabel("Iteration k-step", fontsize='x-large')
+                        axs[i].set_ylabel("Log10 metric results", fontsize='x-large')
+                        axs[i].grid()
+                        
+                        axs[i].legend(labels=[names[metric][k][i] for k in range(7,10)])
+                    plt.tight_layout()
+                    plt.savefig(output_dir+"{}_{}_{}_dynamics_plot.png".format(shortNames[j],metric,'per_var'))
+                    plt.close()
+                    
+                    
+        except FileNotFoundError :
+            print(directory+prefix+'_'+str(N_samples)+'.p')
+            print('File not found !')
+
 def plot_StandAloneMetrics_Dynamics(step_list, N_samples, names, directories, output_dir):
     """
     plot multi-metrics dynamics (with dynamics indexes in step list) of data present in directory
@@ -134,7 +320,7 @@ def plot_multivariate_dynamics(list_steps, N_samples, names, directories, output
             res=pickle.load(open(path+'multivar0distance_metrics_16384.p', 'rb'))
             RES=res['multivar'].squeeze()
             for step in steps :
-
+                
                 data_r,data_f=RES[step//1500,0], RES[step//1500,1]
                 print(data_r.shape, data_f.shape)
             
@@ -201,19 +387,34 @@ if __name__=="__main__":
     
     #indexes=(0,6,12,-1)
     #N_samples=16384
-    #prefix='distance_metrics'
+    log_dir='/scratch/mrmn/brochetc/GAN_2D/Saved_Sets_21062022/Set_38/Metrics_log/pw_W1/'
+    real_dir='/scratch/mrmn/brochetc/GAN_2D/Sud_Est_Baselines_IS_1_1.0_0_0_0_0_0_256_done/'
+    
+    prefix='swd_scat_comparison_distance_metrics'
     #names=['u', 'v', 't2m']
     #metric_coolNames={'sparse_metric' : 'Scattering Sparsity Wasserstein Distance', 'shape_metric' : 'Scattering Shape Wasserstein Distance'}
     #plot_DistMetrics_Dynamics(list_steps,N_samples,short_names,names, directories,prefix,log_dir, metric_coolNames)
     #plot_Spectrum_dynamics(indexes, names, real_dir, directories, ['u', 'v', 't2m'], log_dir)
     
-    
-    log_dir='/scratch/mrmn/brochetc/GAN_2D/Saved_Sets_21062022/Set_38/Metrics_log/pw_W1/'
-    real_dir='/scratch/mrmn/brochetc/GAN_2D/Sud_Est_Baselines_IS_1_1.0_0_0_0_0_0_256_done/'
-    
     N_samples=16384
-    output_dir=log_dir
+    output_dir=directories[0]
     var_names=['u', 'v','t2m']
-    plot_metrics_map(list_steps, N_samples, short_names, var_names,directories, output_dir)
+    names={'scat_SWD_metric_renorm' : [['sparse', 'shape'],
+                                ['sparse u', 'shape u'],
+                                ['sparse v', 'shape v'],
+                                ['sparse t2m', 'shape t2m']],
+    'scat_SWD_metric' : [['sparse rmse u', 'shape rmse u'],
+                                ['sparse rmse v', 'shape rmse v'],
+                                ['sparse rmse t2m', 'shape rmse t2m'],
+                                ['sparse rmse std u', 'shape rmse std u'],
+                                ['sparse rmse std v', 'shape rmse std v'],
+                                ['sparse rmse std t2m', 'shape rmse std t2m'],
+                                ['sparse swd', 'shape swd'],
+                                ['sparse swd u', 'shape swd u'],
+                                ['sparse swd v', 'shape swd v'],
+                                ['sparse swd t2m', 'shape swd t2m']]
+        }
     
-    
+    plot_specific_comparison(list_steps, N_samples, short_names, names, 
+                             directories, prefix, output_dir)
+
