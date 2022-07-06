@@ -9,12 +9,30 @@ dataset metric tests
 code snippets
 
 """
+import sys
+
+if '/home/mrmn/brochetc/gan4arome' in sys.path :
+    sys.path.remove('/home/mrmn/brochetc/gan4arome')
+sys.path.append('/home/mrmn/brochetc/gan4arome_reorg_var/')
+
+print('-------------BACKEND IMPORT -----------------')
+print(sys.path)
+
 import numpy as np
 import metrics4arome as metrics
 from glob import glob
 import random
 
+
+########### standard parameters #####
+
+num_proc = 8
+var_dict = {'rr': 0, 'u': 1, 'v': 2, 't2m': 3, 'orog': 4} # do not touch unless
+                                                          # you know what u are doing
+
 data_dir='/scratch/mrmn/brochetc/GAN_2D/Sud_Est_Baselines_IS_1_1.0_0_0_0_0_0_256_done/'
+
+#####################################
 
 def split_dataset(file_list,N_parts):
     """
@@ -158,9 +176,10 @@ def load_batch(file_list,number,\
         
         assert number <= 16384  # maximum number of generated samples
         
+        print(number)
+        
         print('loading shape')
         Shape = np.load(file_list[0]).shape
-        
         
         ## case : isolated files (no batching)
         if len(Shape)==3:
@@ -179,7 +198,7 @@ def load_batch(file_list,number,\
         elif len(Shape)==4:
             
             batch = Shape[0]
-            
+                        
             if batch > number : # one file is enough
                 
                 indices = random.sample(range(batch), number)
@@ -192,15 +211,16 @@ def load_batch(file_list,number,\
                 Mat=np.zeros((number, Shape[1], Shape[2], Shape[3]), \
                                                          dtype=np.float32)
                 
-                list_inds=random.sample(file_list, number//batch+1)
+                list_inds=random.sample(file_list, number//batch)
                 
                 for i in range(number//batch) :
                     Mat[i*batch: (i+1)*batch]=\
                     np.load(list_inds[i]).astype(np.float32)
                     
-                remain_inds=random.sample(range(batch),number%batch)
+                if number%batch !=0 :
+                    remain_inds = random.sample(range(batch),number%batch)
                 
-                Mat[i*batch :]=np.load(list_inds[i+1])[remain_inds].astype(np.float32)
+                    Mat[i*batch :] = np.load(list_inds[i+1])[remain_inds].astype(np.float32)
     
                 
 
@@ -272,7 +292,7 @@ def eval_distance_metrics(data, option='from_names'):
         results : np.array containing the calculation of the metric
         
     """
-    metric, dataset, n_samples_0, n_samples_1, VI, CI, index=data
+    metrics_list, dataset, n_samples_0, n_samples_1, VI, CI, index=data
     
     ## loading and normalizing data
     
@@ -282,10 +302,6 @@ def eval_distance_metrics(data, option='from_names'):
     if list(dataset.keys())==['real','fake']:
     
         print('index',index)
-    
-        results=[]
-            
-        Metric=getattr(metrics, metric)
     
         if option=='from_names':
             
@@ -311,10 +327,6 @@ def eval_distance_metrics(data, option='from_names'):
     
         print(index)
     
-        results = []
-            
-        Metric=getattr(metrics, metric)
-    
         real_data0 = load_batch(dataset['real0'],n_samples_0, var_indexes=VI, crop_indexes=CI)
         real_data1 = load_batch(dataset['real1'], n_samples_1, var_indexes=VI, crop_indexes=CI)
         
@@ -325,21 +337,25 @@ def eval_distance_metrics(data, option='from_names'):
         raise ValueError("Dataset keys must be either 'real'/'fake' or 'real0'/'real1', not {}"
                          .format(list(dataset.keys())))
         
-    ## the interesting part : computing the metric    
+    ## the interesting part : computing each metric of metrics_list
     
-    results.append(Metric(real_data, fake_data))
+    results = {}
     
-    return np.array(results).squeeze()
+    for metric in metrics_list :
+    
+        print(metric)
+        
+        Metric = getattr(metrics, metric)
+    
+        results[metric] = Metric(real_data, fake_data)
+    
+    return results, index
 
 def global_dataset_eval(data, option='from_names'):
     
     """
     
-    TODO : global rewrite
-    
-    DEPRECATED
-    
-    variable-wise evaluation of metric on the DataSet (treated as a single numpy matrix)
+    evaluation of metric on the DataSet (treated as a single numpy matrix)
     
     Inputs :
     
@@ -367,45 +383,51 @@ def global_dataset_eval(data, option='from_names'):
            
          option : str, to choose if generated data is loaded from several files (from_names)
                    or from one big Matrix (from_matrix)
+    
+    Returns :
+        
+        results : dictionary contining the metrics list evaluation
+        
+        index : the index input (to keep track on parallel execution)
         
     """
     
-    metric, dataset, n_samples, VI, CI, index, data_option=data
+    metrics_list, dataset, n_samples, VI, CI, index, data_option = data
     
-    Metric=getattr(metrics,metric)
-
+    print(index)
     
     if option=="from_names":
         
         assert(type(dataset)==list)
         
-        data = load_batch(dataset, n_samples,var_indexes=VI, crop_indexes=CI,option=data_option)
-       
+        rdata = load_batch(dataset, n_samples,var_indexes=VI, crop_indexes=CI,option=data_option)
+
 
     if option=='from_matrix':
        
         assert(type(dataset)==str)
         
-        data = np.load(dataset, dtype=np.float32)
+        rdata = np.load(dataset, dtype=np.float32)
     
     if data_option=='real':
         
         Means=np.load(data_dir+'mean_with_orog.npy')[VI].reshape(1,len(VI),1,1)
         Maxs=np.load(data_dir+'max_with_orog.npy')[VI].reshape(1,len(VI),1,1)
     
-        data=normalize(data, 0.95,Means, Maxs)
+        rdata=normalize(rdata, 0.95,Means, Maxs)
     
-    print(index, data.shape)
+   
     
-    results=[]
     
-    ## per variable evaluation
+    results = {}
     
-    for i in range(len(VI)):
-        results.append(Metric(data[:,i:(i+1),:,:]))
+    for metric in metrics_list :
+    
+        print(metric)
         
-    if type(results[-1])==tuple:
-        return results[0][0], np.array([results[i][1] for i in range(len(VI))])
+        Metric = getattr(metrics, metric)
+                
+        results[metric] = Metric(rdata)
     
-    return np.array(results).squeeze()
+    return results, index
 

@@ -10,48 +10,40 @@ Metrics computation automation
 
 """
 
-import sys
-sys.path.append('/home/mrmn/brochetc/gan4arome/metrics4arome/')
 
-import evaluation_backend as backend
-import metrics4arome as metrics
 import pickle
 from glob import glob
 import numpy as np
 from multiprocessing import Pool
-import configurate
+from collections import defaultdict
+
+
+from score_crawl.configurate import Experiment
+import score_crawl.evaluation_backend as backend
+import metrics4arome as metrics
+
 
 
 ########### standard parameters #####
 
-num_proc = 4
-var_dict = {'rr': 0, 'u': 1, 'v': 2, 't2m': 3, 'orog': 4} # do not touch unless
-                                                          # you know what u are doing
+num_proc = backend.num_proc
+var_dict = backend.var_dict 
 data_dir=backend.data_dir
+
 #####################################
 
-
-class MetricsCalculator() :
+   
+class MetricsCalculator(Experiment) :
     
-    def __init__(self, expe_config, program, add_name) :
+    def __init__(self, expe_config, add_name) :
+        super().__init__(expe_config)
         
         
-        self.data_dir_f = expe_config.data_dir_f
-        self.log_dir = expe_config.log_dir
-        self.expe_dir = self.log_dir[:-4]
-            
-        self.steps = expe_config.steps
         self.add_name = add_name
-        
-        self.instance_num=expe_config.instance_num
-        
-        indices = configurate.retrieve_domain_parameters(self.expe_dir, 
-                                                             self.instance_num)
-        
-        self.CI, self.var_names , self.var_inds = indices
-        
     
-        
+    
+    def __print__(self):
+        super().__print__()
     ###########################################################################
     ######################### Main class method ###############################
     ###########################################################################
@@ -101,7 +93,7 @@ class MetricsCalculator() :
         ########### sanity checks
         
         if standalone and not parallel :
-            raise(ValueError, 'Estimation fo standalone metric must be done in parallel')
+            raise(ValueError, 'Estimation for standalone metric should be done in parallel')
         
         if standalone :
             
@@ -110,45 +102,50 @@ class MetricsCalculator() :
         else :
             
             assert set(metrics_list) <= metrics.distance_metrics
+        
+        for metric in metrics_list :
+            assert hasattr(metrics, metric)
             
         ########################
         
         self.program = program
-        
-        results = {} 
-        results["header"] = metrics_list
-        
-        for metric in metrics_list :
-            print(metric)
-            assert hasattr(metrics, metric)
             
-            if parallel :
-                if standalone :
-                    if real :
-                        func = lambda metric : self.parallelEstimation_standAlone(metric, option='real')
-                    else :
-                        func = self.parallelEstimation_standAlone
-                    
-                else :
-                    if real :
-                        func = self.parallelEstimation_realVreal
-                    else :
-                        func = self.parallelEstimation_realVSfake
-            else :
+        if parallel :
+            if standalone :
+                
+                name='_standalone_metrics_'
                 
                 if real :
-                    func = self.sequentialEstimation_realVSreal
+                    func = lambda m_list : self.parallelEstimation_standAlone(m_list, option='real')
                     
                 else :
-                    func = self.sequentialEstimation_realVSfake
-                    
-            results[metric]=func(metric)
+                    func = self.parallelEstimation_standAlone
+                
+            else :
+                
+                name='_distance_metrics_'
+                
+                if real :
+                    func = self.parallelEstimation_realVreal
+                else :
+                    func = self.parallelEstimation_realVSfake
+        else :
             
-        N_samples_set=set([self.program[i][1] for i in range(len(program))])
+            name='_distance_metrics_'
+            
+            if real :
+                func = self.sequentialEstimation_realVSreal
+                
+            else :
+                func = self.sequentialEstimation_realVSfake
+                
+        results=func(metrics_list)
+            
+        N_samples_set = set([self.program[i][1] for i in range(len(program))])
             
         N_samples_name = '_'.join([str(n) for n in N_samples_set])
         
-        dumpfile=self.log_dir+self.add_name+'distance_metrics_'+str(N_samples_name)+'.p'
+        dumpfile = self.log_dir + self.add_name+name + str(N_samples_name)+'.p'
         
         pickle.dump(results, open(dumpfile, 'wb'))
         
@@ -160,7 +157,7 @@ class MetricsCalculator() :
     
     
     
-    def parallelEstimation_realVSfake(self, metric):
+    def parallelEstimation_realVSfake(self, metrics_list):
         
         """
         
@@ -193,19 +190,38 @@ class MetricsCalculator() :
             files=glob(self.data_dir_f+"_FsampleChunk_"+str(step)+'_*.npy')
             
           
-            data_list.append((metric, {'real':dataset_r,'fake': files},\
+            data_list.append((metrics_list, {'real':dataset_r,'fake': files},\
                               N_samples, N_samples,\
                               self.VI, self.CI, step))
         
         with Pool(num_proc) as p :
             res=p.map(backend.eval_distance_metrics, data_list)
+            
+            
+        ## some cuisine to produce a rightly formatted dictionary
         
+        ind_list=[]
+        d_res = defaultdict(list)
         
-        return np.array(res)
+        for res_index in res :
+            index = res_index[1]
+            res0 = res_index[0]
+            for k, v in res0.items():
+                d_res[k].append(v)
+            ind_list.append(index)
+        
+        for k in d_res.keys():
+            d_res[k]= [x for _,x in sorted(zip(ind_list, d_res[k]))]
+        
+        res = { k : np.concatenate([np.expand_dims(v[i], axis=0) \
+                                    for i in range(len(self.steps))], axis=0).squeeze()
+                                    for k,v in d_res.items()}
+        
+        return res
 
         
     
-    def sequentialEstimation_realVSfake(self, metric):
+    def sequentialEstimation_realVSfake(self, metrics_list):
         
         """
         
@@ -237,16 +253,24 @@ class MetricsCalculator() :
             files=glob(self.data_dir_f+"_FsampleChunk_"+str(step)+'_*.npy')
             
           
-            data=(metric, {'real':dataset_r,'fake': files},\
+            data=(metrics_list, {'real':dataset_r,'fake': files},\
                   N_samples, N_samples,
                   self.VI, self.CI, step)
+   
+            res.append(backend.eval_distance_metrics(data))
+  
+        ## some cuisine to produce a rightly formatted dictionary
+            
+        d_res = defaultdict(list)
         
-            if step==0: res = [backend.eval_distance_metrics(data)]
-            else :
-                
-                res.append(backend.eval_distance_metrics(data))
-           
-            res = np.array(res)
+        for res_index in res :
+            res0 = res_index[0]
+            for k, v in res0.items():
+                d_res[k].append(v)
+        
+        res = { k : np.concatenate([np.expand_dims(v[i], axis=0) \
+                                    for i in range(len(self.steps))], axis=0).squeeze() 
+                                    for k,v in d_res.items()}
             
         return res
         
@@ -290,9 +314,25 @@ class MetricsCalculator() :
         
         with Pool(num_proc) as p :
             res = p.map(backend.eval_distance_metrics, data_list)
-            
-        res = np.array(res)
         
+        ## some cuisine to produce a rightly formatted dictionary
+            
+        ind_list=[]
+        d_res = defaultdict(list)
+            
+        for res_index in res :
+            index = res_index[1]
+            res0 = res_index[0]
+            for k, v in res0.items():
+                d_res[k].append(v)
+            ind_list.append(index)
+        
+        for k in d_res.keys():
+            d_res[k]= [x for _, x in sorted(zip(ind_list, d_res[k]))]
+        
+        res = { k : np.concatenate([np.expand_dims(v[i], axis=0) \
+                                    for i in range(len(self.steps))], axis=0).squeeze() 
+                                    for k,v in d_res.items()}
         
         return res
         
@@ -318,6 +358,7 @@ class MetricsCalculator() :
         
             
         #getting first (and only) item of the random real dataset program
+        
         datasets = backend.build_datasets(data_dir, self.program)
             
         for i in range(len(datasets)):
@@ -331,13 +372,24 @@ class MetricsCalculator() :
             if i==0: res = [backend.eval_distance_metrics(data)]
             else :  
                 res.append(backend.eval_distance_metrics(data))
-       
-        res = np.array(res)
         
+        ## some cuisine to produce a rightly formatted dictionary
+       
+        d_res = defaultdict(list)
+        
+        for res_index in res :
+            res0 = res_index[0]
+            for k, v in res0.items():
+                d_res[k].append(v)
+        
+        res = { k : np.concatenate([np.expand_dims(v[i], axis=0) \
+                                    for i in range(len(self.steps))], axis=0).squeeze() 
+                                    for k,v in d_res.items()}
+            
         return res
         
         
-    def parallelEstimation_standAlone(self, metric, option='fake'):
+    def parallelEstimation_standAlone(self, metrics_list, option='fake'):
         
         """
         
@@ -348,7 +400,7 @@ class MetricsCalculator() :
         Use multiple processes to evaluate the metric in parallel on each
         item.
         
-        The metric must be a distance metric and the data should be real / real
+        The metric must be a standalone metric.
         
         Inputs : 
             
@@ -356,41 +408,54 @@ class MetricsCalculator() :
             
         Returns :
             
-            N_samples : int, the number of samples used in evaluation
             res : ndarray, the results array (precise shape defined by the metric)
         
         """
         
+        N_samples = self.program[0][1]
+        
         if option=='real':
             
-            assert self.program is not None
-            dataset_r = backend.build_datasets(data_dir, self.program)
+            dataset_r = backend.build_datasets(data_dir, self.program)   
             
-            N_samples = len(dataset_r)
-      
-            
-        for i,step in enumerate(self.steps):
+            data_list = [(metrics_list, dataset, self.program[i][1], 
+                          self.VI, self.CI, i, option) \
+                        for i, dataset in enumerate(dataset_r)]
+
+        elif option=='fake' :
             
             data_list = []
             
-            #getting files to analyze from fake dataset
-            if option=='fake' :
-                
-                files = glob(self.data_dir_f+"_FsampleChunk_"+str(step)+'_*.npy')
-                
-                data_list.append((metric, files, N_samples, 
-                                  self.VI, self.CI, step, option))
-                
-            elif option=="real":
-                
-                data_list.append((metric, dataset_r[i], step, False, option))
-                
+            for i,step in enumerate(self.steps):
+                                
+                #getting files to analyze from fake dataset
+                if option=='fake' :
+                    
+                    files = glob(self.data_dir_f+"_FsampleChunk_"+str(step)+'_*.npy')
+                    
+                    data_list.append((metrics_list, files, N_samples, 
+                                      self.VI, self.CI, step, option))
+          
         with Pool(num_proc) as p :
             
             res = p.map(backend.global_dataset_eval, data_list)
             
-        res = np.array(res)
-                            
+        ind_list=[]
+        d_res = defaultdict(list)
+            
+        for res_index in res :
+            index = res_index[1]
+            res0 = res_index[0]
+            for k, v in res0.items():
+                d_res[k].append(v)
+            ind_list.append(index)
+        
+        for k in d_res.keys():
+            d_res[k]= [x for _, x in sorted(zip(ind_list, d_res[k]))]
+        
+        res = { k : np.concatenate([np.expand_dims(v[i], axis=0) \
+                                    for i in range(len(self.steps))], axis=0).squeeze() 
+               for k,v in d_res.items()}
+            
         return res
-    
 

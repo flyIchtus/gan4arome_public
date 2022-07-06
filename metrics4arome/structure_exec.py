@@ -13,6 +13,8 @@ executble file for structure functions
 import structure_functions as sfunc
 import structure_plot as splot
 import numpy as np
+import random
+from glob import glob
 
 DATA_DIR='/home/brochetc/Bureau/Thèse/présentations_thèse/images_des_entrainements/echantillons/'
 DATA_DIR_F='/home/brochetc/Bureau/Thèse/présentations_thèse/images_des_entrainements/echantillons/'
@@ -20,13 +22,45 @@ DATA_DIR_F='/home/brochetc/Bureau/Thèse/présentations_thèse/images_des_entrai
 CI=[78,206,55,183]
 
 
+
+def load_batch(path,number,CI,Shape=(3,128,128), option='fake'):
+    
+    if option=='fake':
+        
+        list_files=glob(path+'_Fsample_*.npy')
+
+        Mat=np.zeros((number, Shape[0], Shape[1], Shape[2]), dtype=np.float32)
+        
+        list_inds=random.sample(list_files, number)
+        for i in range(number):
+            Mat[i]=np.load(list_inds[i])[:,:Shape[1],:Shape[2]].astype(np.float32)
+            
+    elif option=='real':
+        
+        list_files=glob(path+'_sample*')
+        Shape=np.load(list_files[0])[1:4,CI[0]:CI[1], CI[2]:CI[3]].shape
+        Mat=np.zeros((number, Shape[0], Shape[1], Shape[2]), dtype=np.float32)
+        
+        list_inds=random.sample(list_files, number)
+        for i in range(number):
+            Mat[i]=np.load(list_inds[i])[1:4,CI[0]:CI[1], CI[2]:CI[3]].astype(np.float32)
+            
+            
+        Means=np.load(path+'mean_with_orog.npy')[1:4].reshape(1,3,1,1).astype(np.float32)
+        Maxs=np.load(path+'max_with_orog.npy')[1:4].reshape(1,3,1,1).astype(np.float32)
+        Mat=(0.95)*(Mat-Means)/Maxs
+        
+
+    return Mat
+
+
 N_tests=1
 
 for n in range(N_tests):
     
-    M_real=sfunc.load_batch(DATA_DIR,64,CI, option='real')
+    M_real=load_batch(DATA_DIR,64,CI, option='real')
    
-    M_fake=sfunc.load_batch(DATA_DIR_F,64, CI, option='fake')
+    M_fake=load_batch(DATA_DIR_F,64, CI, option='fake')
   
     #### increments
     inc_real,_=sfunc.increments(M_real,16)

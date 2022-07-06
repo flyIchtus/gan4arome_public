@@ -22,6 +22,10 @@ trainer_horovod version 3
 
 """
 
+import sys
+sys.path.append('/home/mrmn/brochetc/gan4arome_reorg_var/')
+
+
 ########## NN libs ############################################################
 import torch
 import torch.optim as optim
@@ -32,7 +36,8 @@ import horovod.torch as hvd
 #import torch.multiprocessing as mp
 
 ########## data handling and plotting libs ####################################
-import metrics as METR
+
+import metrics4arome as METR
 import plotting_functions as plotFunc
 import DataSet_Handler_horovod as DSH
 import LookAheadMiniMax as LA
@@ -373,18 +378,19 @@ class Trainer():
     def save_samples(self,number,Step, modelG):
         print("Saving samples")
         
-        z=torch.empty(number,modelG.nz).normal_().cuda()
-        with torch.no_grad():
-            out=modelG(z).cpu().numpy()
-            
-        save(self.config.output_dir+'/samples/_FsampleChunk_{}.npy'.format(Step), out)
+        for i in range(16):
+            z=torch.empty(number,modelG.nz).normal_().cuda()
+            with torch.no_grad():
+                out=modelG(z).cpu().numpy()
+
+            save(self.config.output_dir+'/samples/_FsampleChunk_{}_{}.npy'.format(Step,i), out)
         
         return 0
      ########################### TRAINING FUNCTIONS ############################
             
     def Discrim_Update(self,modelD, modelG, train_iter):
         for i in range(self.n_dis):
-            print('n_dis step',i)
+
             for acc in range(self.config.accum_steps):
                 samples, _,_=next(train_iter)
                 samples=samples.cuda()            
@@ -392,16 +398,16 @@ class Trainer():
                 loss=self.D_backward(samples, modelD, modelG, self.optim_D,\
                                           self.optim_G,\
                                           self.config.use_amp)
-                print('backward done')
+
                 self.optim_D.synchronize()
-                print('synchro D done')
+
                 #torch.nn.utils.clip_grad_norm_(modelD.parameters(),3.0)
 
             with self.optim_D.skip_synchronize():
                 self.optim_D.step()
-                print('step done')
+
             self.optim_G.synchronize()
-            print('synchro G done')
+
             
         return loss, samples
     
@@ -520,7 +526,7 @@ class Trainer():
         crit=self.criterion(real_samples,fake_samples)
         assert torch.isfinite(crit).all()
 
-        CRIT=hvd.allreduce(crit, name=self.criterion.name)
+        CRIT=hvd.allreduce(crit, name=self.criterion.long_name)
         
         if hvd.rank()==0:
             self.crit_List.append(CRIT.item())

@@ -25,12 +25,12 @@ import subprocess
           '--lrD_sched':['exp'], '--lrG_sched':['exp'], '--lrD_gamma':[0.95,0.9],\
           '--lrG_gamma':[0.95,0.9], '--ortho_init': [True]}"""
 
-ensemble={'--batch_size':[4],
+ensemble={'--batch_size':[8,8,8], '--lr_D': [1e-3],'--lr_G' : [1e-3],
           '--n_dis':[1], '--sn_on_g': [True], '--use_amp':[True],'--warmup':[True],
           '--lrD_sched':['exp'], '--lrG_sched':['exp'], '--lrD_gamma':[0.9],
           '--lrG_gamma':[0.9], '--ortho_init': [True],
           '--g_channels':[2], '--d_channels':[2],
-          '--plot_step':[1], '--var_names' : ["['t2m','orog']"], '--total_steps' :[3]}
+          '--var_names' : ["['t2m','orog']"], '--total_steps' :[60000]}
 
 """,\
           '--LA_optimizer':[True],'--LA_k':[1000], '--LA_alpha':[0.3]}"""
@@ -179,11 +179,11 @@ def get_expe_parameters():
                         default=os.getcwd()+'/')
 
     # Step size
-    parser.add_argument('--log_step', type=int, default=1000) #-> default is at the end of each epoch
-    parser.add_argument('--sample_step', type=int, default=1000) # set to 0 if not needed
-    parser.add_argument('--plot_step', type=int, default=1000) #set to 0 if not needed
-    parser.add_argument('--save_step', type=int, default=1000) # set to 0 if not needed
-    parser.add_argument('--test_step', type=int, default=1000) #set to 0 if not needed
+    parser.add_argument('--log_step', type=int, default=1500) #-> default is at the end of each epoch
+    parser.add_argument('--sample_step', type=int, default=1500) # set to 0 if not needed
+    parser.add_argument('--plot_step', type=int, default=1500) #set to 0 if not needed
+    parser.add_argument('--save_step', type=int, default=1500) # set to 0 if not needed
+    parser.add_argument('--test_step', type=int, default=1500) #set to 0 if not needed
     
 
     config=parser.parse_args()

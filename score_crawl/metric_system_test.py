@@ -18,7 +18,7 @@ import pickle
 from glob import glob
 import numpy as np
 from multiprocessing import Pool
-
+import config
 
 
 
@@ -26,6 +26,8 @@ from multiprocessing import Pool
 
 num_proc=4
 
+
+#####################################
 
 def parallelEstimation_realVSfake(data_dir_f, data_dir, log_dir,program, steps, add_name=''):
     results={} 

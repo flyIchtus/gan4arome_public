@@ -6,6 +6,9 @@ Created on Wed Jan 19 09:33:21 2022
 @author: brochetc
 """
 
+import sys
+sys.path.append('/home/mrmn/brochetc/gan4arome_reorg_var/')
+
 import torch
 
 import horovod.torch as hvd
@@ -69,7 +72,7 @@ else:
 ###############################################################################
 
 TRAINER=trainer.Trainer(config,criterion="W1_Center",\
-                        test_metrics=["SWD_metric_torch"])#, "fid"])
+                        test_metrics=["W1_random","SWD_metric_torch", "Orography_RMSE"])#, "fid"])
 #'Orography_RMSE'])
 # names used in test_metrics should belong to the metrics namespace
 
