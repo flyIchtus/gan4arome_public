@@ -65,6 +65,7 @@ def sliced_wasserstein(A, B, dir_repeats, dirs_per_repeat):
     return np.mean(results)                                             # average over repeats
 
 #----------------------------------------------------------------------------
+#useless functions
 
 def downscale_minibatch(minibatch, lod):
     if lod == 0:
@@ -72,7 +73,7 @@ def downscale_minibatch(minibatch, lod):
     t = minibatch.astype(np.float32)
     for i in range(lod):
         t = (t[:, :, 0::2, 0::2] + t[:, :, 0::2, 1::2] + t[:, :, 1::2, 0::2] + t[:, :, 1::2, 1::2]) * 0.25
-    return np.round(t).clip(0, 255).astype(np.uint8)
+    return t
 
 #----------------------------------------------------------------------------
 
@@ -158,6 +159,8 @@ class SWD_API:
         del self.desc_real, self.desc_fake
         
         dist = [d * 1e3 for d in dist] # multiply by 10^3
+        
+        print(dist,np.mean(dist))
         
         return dist + [np.mean(dist)]
     

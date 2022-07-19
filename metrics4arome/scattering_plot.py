@@ -43,8 +43,8 @@ def plot_2o_Estimators(estim_fake, estim_real, name, J,L, output_dir):
     for i, var in enumerate(['$u$', '$v$', '$t_{2m}$']):
 
         print(var)
-        fig, axs = plt.subplots(1, J-1, figsize=(15, 6),
-                            sharex=False, sharey=True)
+        fig, axs = plt.subplots(1, J-1, figsize=(21, 6),
+                            sharex=False, sharey=False)
         for j_up in range(1,J):
             
             si=sum([k for k in range(j_up+1, J)]) #starting index
@@ -69,30 +69,31 @@ def plot_2o_Estimators(estim_fake, estim_real, name, J,L, output_dir):
         
 
             axs[J-1-j_up].plot([1+j2+(J-j_up) for j2 in range(j_up)], 
-               estim_real[:,i,si:ei].mean(axis=0), 'r-', label='Mean PEARO')
+               estim_real[:,i,si:ei].mean(axis=0), 'r-', label='Mean AROME-EPS')
             
             axs[J-1-j_up].plot([1+j2+(J-j_up) for j2 in range(j_up)], 
                estim_real[:,i,si:ei].mean(axis=0)
                  +estim_real[:,i,si:ei].std(axis=0), 
-                 'r--', label='Mean $\pm$ Std PEARO')
+                 'r--', label='Mean $\pm$ Std AROME-EPS')
             axs[J-1-j_up].plot([1+j2+(J-j_up) for j2 in range(j_up)], 
                estim_real[:,i,si:ei].mean(axis=0)
                  -estim_real[:,i,si:ei].std(axis=0),'r--')
             
             axs[J-1-j_up].plot([1+j2+(J-j_up) for j2 in range(j_up)], 
-               estim_real[:,i,si:ei].max(axis=0), 'r+',label='Max/Min PEARO')
+               estim_real[:,i,si:ei].max(axis=0), 'r+',label='Max/Min AROME-EPS')
             axs[J-1-j_up].plot([1+j2+(J-j_up) for j2 in range(j_up)], 
                estim_real[:,i,si:ei].min(axis=0), 'r+')
             
             axs[J-1-j_up].set_xticks(list(range(J-j_up+1, J+1)))
-            axs[J-1-j_up].set_xlabel(r"Interaction scale $j_2 > j_1$")
-            axs[J-1-j_up].title.set_text(r"Scale $j_1$={}".format(J-j_up))
-            
-        axs[0].set_ylabel("{} estimator".format(name))
-        axs[J-2].legend(bbox_to_anchor=(1.0,0.5),loc='center left')
+            axs[J-1-j_up].set_xlabel(r"Second-order scale $j_2 > j_1$", fontsize = 'large', fontweight = 'bold')
+            axs[J-1-j_up].title.set_text(r"First-order scale $j_1$={}, variable {}".format(J-j_up, var))
+            axs[J-1-j_up].title.set_size('large') #, fontweight = 'bold')
+            axs[J-1-j_up].title.set_weight('bold')
+        axs[0].set_ylabel("{} estimator".format(name), fontsize = 'large', fontweight = 'bold')
+        axs[J-2].legend(bbox_to_anchor=(1.0,0.5),loc='center left')#, fontweight = 'large')
         
         fig.subplots_adjust(bottom=0.05,top=0.9, left=0.05, right=0.95)
-        st=fig.suptitle('Scattering {} estimators for {}, $J$={}, $L$={}'.format(name,var, J,L), fontsize='14')
+        st=fig.suptitle('Scattering {} estimators for {}, $J$={}, $L$={}'.format(name,var, J,L), fontsize='14', fontweight = 'bold')
         st.set_y(1.0)
         
         plt.savefig(output_dir+'scattering_{}_{}_{}_{}.png'.format(var[1:-1],J,L, name), bbox_inches='tight')
@@ -133,7 +134,7 @@ def plot_1o_Estimators(estim_fake, estim_real, name, J,L, output_dir):
 
             print(var)
             fig, axs = plt.subplots(1, L, figsize=(15, 6),
-                                sharex=False, sharey=True)
+                                sharex=False, sharey=False)
             for ell in range(L):
                 
                 axs[ell].plot([1+j2 for j2 in range(J)], 

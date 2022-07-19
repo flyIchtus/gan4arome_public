@@ -110,6 +110,40 @@ def radial_bin_dct(dct_sig,center):
     
     return radial_profile
 
+def PowerSpectralDensitySlow(x):
+    """
+    compute the radially-binned, sample-averaged power spectral density 
+    and radially-binned, sample-standardized power spectral density
+    of the data x
+    
+    Inputs :
+        x : numpy array, shape is B x N x N
+    
+    Returns :
+        
+        out : numpy array, shape is (Rmax,3), defined in radial_bin_dct function
+               [:, 0] : contains average spectrum
+               [:, 1] : contains standard deviation of spectrum
+               [:,2 ] : contains minimum spectrum
+               
+    Slow but should be more robust
+    """
+    
+    sig = dct_var(x)
+
+    center=(sig.shape[1]//2, sig.shape[2]//2)
+    N_samples=sig.shape[0]
+    out_list=[]
+    for i in range(N_samples):
+        out_list.append(radial_bin_dct(sig[i], center))
+    out_list=np.array(out_list)
+    out=out_list.mean(axis=0)
+    out_90=np.quantile(out_list,0.9, axis=0)
+    out_10=np.quantile(out_list,0.1, axis=0)
+    return np.concatenate((np.expand_dims(out, axis=-1),\
+                            np.expand_dims(out_90, axis=-1),\
+                            np.expand_dims(out_10, axis=-1)),axis=-1)
+
 def PowerSpectralDensity(x):
     """
     compute the radially-averaged, sample-averaged power spectral density 

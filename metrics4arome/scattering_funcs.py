@@ -23,13 +23,12 @@ def load_batch(path,number,CI,Shape=(3,128,128), option='fake'):
     
     if option=='fake':
         
-        list_files=glob(path+'_Fsample_*.npy')
+        list_files=glob(path+'_FsampleChunk_18000_0.npy')
 
         Mat=np.zeros((number, Shape[0], Shape[1], Shape[2]))
         
-        list_inds=random.sample(list_files, number)
-        for i in range(number):
-            Mat[i]=np.load(list_inds[i])[:,:Shape[1],:Shape[2]]
+        
+        Mat=np.load(list_files[0])[:number,:,:Shape[1],:Shape[2]]
             
     elif option=='real':
         

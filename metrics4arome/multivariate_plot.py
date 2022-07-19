@@ -14,11 +14,11 @@ import numpy as np
 import matplotlib.pyplot as plt
 import multivariate as mlt
 
-path='/home/brochetc/Bureau/Thèse/présentations_thèse/Première_année/ressources_présentations/multivariables/Set_38_8_001/'
+path='/home/brochetc/Bureau/These/presentations_these/Premiere_annee/ressources_presentations/multivariables/Set_38_32_2/'
 
 if __name__=="__main__":
     
-    res=pickle.load(open(path+'multivar_1__distance_metrics_16384.p', 'rb'))
+    res=pickle.load(open(path+'multivar_1_distance_metrics_16384.p', 'rb'))
     
     RES=res['multivar'].squeeze()
     

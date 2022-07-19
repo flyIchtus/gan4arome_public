@@ -11,6 +11,7 @@ metrics computation configuration tools
 import argparse
 from score_crawl.evaluation_backend import var_dict
 
+
 def str2list(li):
     if type(li)==list:
         li2=li
